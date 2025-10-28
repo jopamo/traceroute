@@ -133,7 +133,7 @@ static const tr_module* ops = NULL;
 
 static char* opts[16] = {
     NULL,
-};                                /*  assume enough   */
+}; /*  assume enough   */
 static unsigned int opts_idx = 1; /*  first one reserved...   */
 
 static int af = 0;

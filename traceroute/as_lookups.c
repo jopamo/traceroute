@@ -27,8 +27,8 @@
 #define ORIGIN_PREFIX "origin:"
 #define IFACE_NAME_LEN 64
 
-static sockaddr_any ra_addr = { 0 };
-static char ra_buf[MAX_RA_BUF_SIZE] = { 0 };
+static sockaddr_any ra_addr = {0};
+static char ra_buf[MAX_RA_BUF_SIZE] = {0};
 
 const char* get_as_path(const char* query) {
     int sk, n;
@@ -99,28 +99,36 @@ const char* get_as_path(const char* query) {
             char* p = strchr(buf, '/');
             if (p) {
                 prefix = strtoul(++p, NULL, 10);
-            } else {
+            }
+            else {
                 prefix = 0;
             }
-        } else if (strncmp(buf, ORIGIN_PREFIX, strlen(ORIGIN_PREFIX)) == 0) {
-            char *p = buf + strlen(ORIGIN_PREFIX);
-            while (isspace(*p)) p++;
+        }
+        else if (strncmp(buf, ORIGIN_PREFIX, strlen(ORIGIN_PREFIX)) == 0) {
+            char* p = buf + strlen(ORIGIN_PREFIX);
+            while (isspace(*p))
+                p++;
 
-            char *as = p;
-            while (*p && !isspace(*p)) p++;
+            char* as = p;
+            while (*p && !isspace(*p))
+                p++;
             *p = '\0';
 
             // If prefix is better or equal, store the result
             if (prefix > best_prefix) {
                 best_prefix = prefix;
                 rb = ra_buf;
-                while (rb < re && (*rb++ = *as++)) ;
-            } else if (prefix == best_prefix) {
+                while (rb < re && (*rb++ = *as++))
+                    ;
+            }
+            else if (prefix == best_prefix) {
                 // Handle multiple equal prefix origins
-                char *q = strstr(ra_buf, as);
+                char* q = strstr(ra_buf, as);
                 if (!q || (*(q += strlen(as)) != '\0' && *q != '/')) {
-                    if (rb > ra_buf) rb[-1] = '/';
-                    while (rb < re && (*rb++ = *as++)) ;
+                    if (rb > ra_buf)
+                        rb[-1] = '/';
+                    while (rb < re && (*rb++ = *as++))
+                        ;
                 }
             }
         }

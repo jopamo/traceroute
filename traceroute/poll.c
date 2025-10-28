@@ -16,7 +16,7 @@
 
 static struct pollfd* pfd = NULL;
 static unsigned int num_polls = 0;
-static unsigned int max_polls = 0; // Track the allocated size to optimize reallocations
+static unsigned int max_polls = 0;  // Track the allocated size to optimize reallocations
 
 void add_poll(int fd, int events) {
     int i;
@@ -48,7 +48,7 @@ void del_poll(int fd) {
         ;
 
     if (i < num_polls) {
-        pfd[i].fd = -1; // Mark it as invalid
+        pfd[i].fd = -1;  // Mark it as invalid
     }
 }
 
@@ -59,7 +59,7 @@ static int cleanup_polls(void) {
     for (i = 0; i < num_polls && pfd[i].fd > 0; i++)
         ;
 
-    if (i < num_polls) { // A hole has been found
+    if (i < num_polls) {  // A hole has been found
         for (j = i + 1; j < num_polls; j++) {
             if (pfd[j].fd > 0) {
                 pfd[i++] = pfd[j];

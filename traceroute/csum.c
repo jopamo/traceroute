@@ -12,8 +12,8 @@
 
 uint16_t in_csum(const void* ptr, size_t len) {
     const uint16_t* p = (const uint16_t*)ptr;
-    size_t nw = len / 2;      // Number of 16-bit words
-    unsigned int sum = 0;     // Accumulator for the checksum
+    size_t nw = len / 2;   // Number of 16-bit words
+    unsigned int sum = 0;  // Accumulator for the checksum
     uint16_t res;
 
     // Process 16-bit words
@@ -28,7 +28,7 @@ uint16_t in_csum(const void* ptr, size_t len) {
 
     // Fold 32-bit sum to 16 bits (add overflow from the higher 16 bits)
     sum = (sum & 0xFFFF) + (sum >> 16);  // Fold the upper 16-bits into the lower 16-bits
-    sum += (sum >> 16);  // Add any remaining overflow
+    sum += (sum >> 16);                  // Add any remaining overflow
 
     // Invert the sum and return
     res = ~sum;
