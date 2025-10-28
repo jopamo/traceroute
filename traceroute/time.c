@@ -1,6 +1,6 @@
 /*
     Copyright (c)  2006, 2007		Dmitry Butskoy
-					<dmitry@butskoy.name>
+                                        <dmitry@butskoy.name>
     License:  GPL v2 or any later
 
     See COPYING for the status of this software.
@@ -12,16 +12,15 @@
 
 #include "traceroute.h"
 
-
 /*  Just returns current time as double, with most possible precision...  */
 
-double get_time (void) {
-	struct timeval tv;
-	double d;
+double get_time(void) {
+    struct timeval tv;
+    double d;
 
-	gettimeofday (&tv, NULL);
+    gettimeofday(&tv, NULL);
 
-	d = ((double) tv.tv_usec) / 1000000. + (unsigned long) tv.tv_sec;
+    d = ((double)tv.tv_usec) / 1000000. + (unsigned long)tv.tv_sec;
 
-	return d;
+    return d;
 }
