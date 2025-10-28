@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/times.h>
-#include <sys/random.h>   // For better randomness if supported
+#include <sys/random.h>  // For better randomness if supported
 
 #include "traceroute.h"
 
