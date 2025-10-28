@@ -15,6 +15,10 @@
 static tr_module* base = NULL;
 
 void tr_register_module(tr_module* ops) {
+    if (!ops) {
+        return;  // Avoid registering NULL modules
+    }
+
     ops->next = base;
     base = ops;
 }
@@ -22,13 +26,15 @@ void tr_register_module(tr_module* ops) {
 const tr_module* tr_get_module(const char* name) {
     const tr_module* ops;
 
-    if (!name)
-        return 0;
-
-    for (ops = base; ops; ops = ops->next) {
-        if (!strcasecmp(name, ops->name))
-            return ops;
+    if (!name) {
+        return NULL;  // Return NULL if the name is NULL
     }
 
-    return NULL;
+    for (ops = base; ops; ops = ops->next) {
+        if (!strcasecmp(name, ops->name)) {
+            return ops;
+        }
+    }
+
+    return NULL;  // Return NULL if no match is found
 }
