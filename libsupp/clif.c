@@ -34,7 +34,7 @@ static struct {
 	CLIF_argument *argument_list;
 	unsigned int parse_flags;
 } curr = { 0, };
-	
+
 
 static void err_report (const char *format, ...) {
 	va_list ap;
@@ -98,7 +98,7 @@ static char *show_short (const CLIF_option *optn) {
 
 	return buf;
 }
-	
+
 static char *show_long (const CLIF_option *optn) {
 	static char buf[80];
 	char *p = buf;
@@ -221,26 +221,27 @@ static void err_bad_opt (const char *arg, char c, int n) {
 }
 
 static void err_bad_arg (const CLIF_option *optn, char c, int n) {
-	CLIF_option tmp = *optn;
-	char ss[80];
-	char *s;
+    CLIF_option tmp = *optn;
+    char ss[80];
+    char *s;
 
-	tmp.arg_name = NULL;
+    tmp.arg_name = NULL;
 
-	if (c) {
-	    s = show_short (&tmp);	/*  always without arg...  */
-	    strncpy (ss, s, sizeof (ss));
-	    s = show_short (optn);
-	} else {
-	    s = show_long (&tmp);	/*  always without arg...  */
-	    strncpy (ss, s, sizeof (ss));
-	    s = show_long (optn);
-	}
+    if (c) {
+        s = show_short(&tmp);  /* always without arg */
+        snprintf(ss, sizeof(ss), "%s", s);
+        s = show_short(optn);
+    } else {
+        s = show_long(&tmp);   /* always without arg */
+        snprintf(ss, sizeof(ss), "%s", s);
+        s = show_long(optn);
+    }
 
-	err_report ("%s `%s' (argc %d) requires an argument: `%s'",
-		    (c || !is_keyword (optn)) ? "Option" : "Keyword", ss, n, s);
+    err_report("%s `%s' (argc %d) requires an argument: `%s'",
+               (c || !is_keyword(optn)) ? "Option" : "Keyword",
+               ss, n, s);
 }
-	
+
 static void err_bad_res (const CLIF_option *optn, char c,
 					const char *opt_arg, int n) {
 	CLIF_option tmp = *optn;
@@ -362,18 +363,18 @@ static int call_function (CLIF_option *optn, char *opt_arg, char sym) {
 	    char *endt = tmp + sizeof (tmp);
 
 	    while (*opt_arg) {
-    
+
 		t = tmp;
 		while (t < endt && *opt_arg &&
 		       *opt_arg != ' ' && *opt_arg != '\t' && *opt_arg != ','
 		)  *t++ = *opt_arg++;
 
 		if (t >= endt)  return -1;
-    
+
 		*t = '\0';
-    
+
 		if (function (optn, tmp) < 0)  return -1;
-    
+
 		while (*opt_arg == ' ' || *opt_arg == '\t' || *opt_arg == ',')
 			opt_arg++;
 	    }
@@ -419,7 +420,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 	    int stage = STRICT_BEG;
 
 	    for (argm = argument_list; argm->name; argm++) {
-		
+
 		if (argm->flags & CLIF_STRICT) {
 
 		    if (stage == STRICT_BEG)  strict_beg++;
@@ -496,22 +497,22 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		arg++;
 
 		if (*arg == sym ||	/*  `---' - let it be not option... */
-		    (parse_flags & (_CLIF_STRICT_KEYWORD|_CLIF_STRICT_ONEDASH)) 
+		    (parse_flags & (_CLIF_STRICT_KEYWORD|_CLIF_STRICT_ONEDASH))
 		) {
 		    arg -= 2;
 		    goto  handle_arg;	/*  not option anyway  */
 		}
-	
+
 		optn = find_long (arg, &opt_arg, 0,
 				_CLIF_STRICT_KEYWORD | _CLIF_STRICT_ONEDASH);
 		if (optn)  goto long_found;
-	
+
 		/*  XXX: May be allow only for `--', not `++' too...  */
 		if (!*arg && sym == '-') {  /*  `--' and no empty longoption */
 		    option_list = NULL;	    /*  POSIX way...  */
 		    continue;
 		}
-	
+
 		/*  XXX: or treat as an argument sometimes???  */
 		err_bad_opt (argv[i], 0, i);
 		return -1;
@@ -522,17 +523,17 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		    optn = find_long (arg, &opt_arg, CLIF_MAY_ONEDASH, 0);
 		    if (optn)  goto long_found;
 		}
-    
+
 		if (!*arg) {	/*  POSIX say: only "stdout specification"... */
 		    arg--;
 		    goto handle_arg;
 		}
-    
+
 		goto  handle_short;
 	    }
 
 
-    long_found:	
+    long_found:
 	    if (check_sym (optn, sym) < 0) {	/*  Oops...  */
 		err_bad_opt (argv[i], 0, i);
 		return -1;
@@ -545,7 +546,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		}
 		exclusive_cnt--;
 	    }
-		
+
 	    if (optn->arg_name && !opt_arg) {
 		unsigned int flags = optn->flags | parse_flags;
 
@@ -562,7 +563,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		    opt_arg = NULL;
 		} else
 		    opt_arg = argv[i];
-		   
+
 	    }
 
 
@@ -589,7 +590,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 
 	    /*  POSIX say: No more options after args...  */
 	    if (posix)  option_list = NULL;	/*  geniously...  */
-	
+
 	    continue;
 
 
@@ -647,7 +648,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 			} else
 			    opt_arg = argv[i];
 		    }
-		    else if ((arg == argv[i] || arg[-1] == sym) &&	
+		    else if ((arg == argv[i] || arg[-1] == sym) &&
 			     (flags & CLIF_MAY_JOIN_ARG)
 		    ) {
 			opt_arg = ++arg;
@@ -706,7 +707,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 	    _CLIF_index argm_index[MAX_ARGC_NUMBER];
 
 	    /*  assing argm (by index) for each arg...  */
-		    
+
 	    for (i = 0, j = 0; i < strict_beg; i++, j++)
 		    argm_index[i] = j;
 	    for (i = num_args - strict_end, j = num_argm - strict_end;
@@ -727,7 +728,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		return -1;
 	    }
 
-	    if (j < num_argm - strict_end &&	
+	    if (j < num_argm - strict_end &&
 		!(argument_list[j].flags & CLIF_MORE) &&
 		/*  ...i.e, there are some missing optional args...  */
 		(argument_list[j].flags & CLIF_ACC_PREV)
@@ -741,7 +742,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 				argument_list[j - 1].name, argv[arg_n[i - 1]]);
 		return -1;
 	    }
-		
+
 	    if (argm_index[--i] == j &&
 		    /*  above is true only after OPTIONAL area scan
 		       and when `j' is stopped on CLIF_MORE  */
@@ -749,7 +750,7 @@ int CLIF_parse_cmdline (int argc, char *argv[],
 		    /*  i.e: there is a *last* one (after CLIF_MORE)
 			in the OPTIONAL area  */
 	    )  argm_index[i] = j;	/*  *last* is better than *more*   */
-		    
+
 
 	    /*  ...and work now   */
 
@@ -793,7 +794,7 @@ static void box_output (int start, int left, int width, const char *str,
 	    memset (buf, ' ', l);
 	    buf[l] = '\0';
 	    fprintf (stderr, "%s", buf);
-	} else 
+	} else
 	    fprintf (stderr, "%s", spacer);
 
 
@@ -804,37 +805,37 @@ static void box_output (int start, int left, int width, const char *str,
 	while (*str) {
 
 	    while (*str && p < endp) {
-    
+
 		if (*str == '%' && arg_name) {
 		    if (str[1] == '%') {
 			*p++ = '%';
 			str += 2;
 			continue;
-		    } 
+		    }
 		    else if (str[1] == 's') {
 			const char *a = arg_name;
-    
+
 			while (*a && p < endp)  *p++ = *a++;
 			str += 2;
 			continue;
-		    } 
+		    }
 		}
-    
+
 		*p++ = *str++;
 	    }
-    
+
 	    *p = '\0';
-    
+
 	    if (p < endp)  break;
 
-    
+
 	    while (p > buf && *p != ' ' && *p != '\t')  p--;
 	    if (p <= buf)  return;	/*  foo on you   */
-		    
+
 	    *p = '\0';
 	    fprintf (stderr, "%s", buf);
 	    fprintf (stderr, "%s", spacer);
-		
+
 	    p++;
 	    for (s = buf; *p; *s++ = *p++) ;
 	    *s = '\0';
@@ -843,7 +844,7 @@ static void box_output (int start, int left, int width, const char *str,
 
 
 	fprintf (stderr, "%s", buf);
-		
+
 	return;
 }
 
@@ -891,7 +892,7 @@ void CLIF_print_options (const char *header,
 
 
 	    /*  print a help string, if present   */
-	    
+
 	    if (optn->help_string)
 		    box_output (len, OPT_FIELD_WIDTH,
 				SCREEN_WIDTH - OPT_FIELD_WIDTH,
@@ -915,7 +916,7 @@ void CLIF_print_options (const char *header,
 
 	return;
 }
-		    
+
 
 void CLIF_print_arguments (const char *header,
 				const CLIF_argument *argument_list) {
@@ -954,7 +955,7 @@ void CLIF_print_arguments (const char *header,
 }
 
 
-void CLIF_print_usage (const char *header, const char *progname, 
+void CLIF_print_usage (const char *header, const char *progname,
 				const CLIF_option *option_list,
 				const CLIF_argument *argument_list) {
 
@@ -1053,7 +1054,7 @@ void CLIF_print_usage (const char *header, const char *progname,
 			continue;	/*  already handled   */
 
 		if (optn->short_opt) {
-		    if (optn->arg_name) 
+		    if (optn->arg_name)
 			fprintf (stderr, " [ %s ]", show_short (optn));
 		    else
 			/*  already handled   */;
@@ -1061,7 +1062,7 @@ void CLIF_print_usage (const char *header, const char *progname,
 		    fprintf (stderr, " [ %s ]", show_long (optn));
 	    }
 	}
-		        
+
 
 	if (argument_list) {
 	    const CLIF_argument *argm;
@@ -1075,7 +1076,7 @@ void CLIF_print_usage (const char *header, const char *progname,
 			while (deep--)  fputc (']', stderr);
 			deep = 0;
 		    }
-			
+
 		    fprintf (stderr, " %s", argm->name);
 		} else {
 		    if (argm->flags & CLIF_MORE)
@@ -1110,7 +1111,7 @@ int CLIF_current_help (void) {
 
 	if (curr.option_list)
 		CLIF_print_options ("Options:", curr.option_list);
-	
+
 	if (curr.argument_list)
 		CLIF_print_arguments ("\nArguments:", curr.argument_list);
 
@@ -1128,7 +1129,7 @@ int CLIF_version_handler (CLIF_option *optn, char *arg) {
 
 	return 0;	/*  be happy   */
 }
-	
+
 
 int CLIF_set_flag (CLIF_option *optn, char *arg) {
 
