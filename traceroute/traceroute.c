@@ -189,66 +189,85 @@ static void check_progname(const char* name) {
     const char* p;
     int l;
 
+    // Find the last '/' in the program name to get the actual executable name
     p = strrchr(name, '/');
-    if (p)
-        p++;
-    else
-        p = name;
+    p = p ? p + 1 : name;  // If '/' found, skip it; otherwise, use the name directly
 
     l = strlen(p);
-    if (l <= 0)
-        return;
-    l--;
 
-    if (p[l] == '6')
+    // If the name is empty or invalid, do nothing
+    if (l == 0)
+        return;
+
+    // Check if the last character is '6' or '4' to set address family
+    if (p[l - 1] == '6')
         af = AF_INET6;
-    else if (p[l] == '4')
+    else if (p[l - 1] == '4')
         af = AF_INET;
 
-    if (!strncmp(p, "tcp", 3))
+    // Check the program name prefix to set the module
+    if (strncmp(p, "tcp", 3) == 0)
         module = "tcp";
-    if (!strncmp(p, "tracert", 7))
+    else if (strncmp(p, "tracert", 7) == 0)
         module = "icmp";
-
-    return;
 }
 
 static int getaddr(const char* name, sockaddr_any* addr) {
     int ret;
     struct addrinfo hints, *ai, *res = NULL;
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = af;
-    hints.ai_flags = AI_IDN;
+    if (!name || !addr) {
+        fprintf(stderr, "Invalid arguments\n");
+        return -1;
+    }
 
+    // Clear out hints and set defaults
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = af;     // Use the global address family 'af'
+    hints.ai_flags = AI_IDN;  // For International Domain Names
+
+    // Get address info
     ret = getaddrinfo(name, NULL, &hints, &res);
     if (ret) {
         fprintf(stderr, "%s: %s\n", name, gai_strerror(ret));
         return -1;
     }
 
+    // Find the first matching address family (or use the first available)
     for (ai = res; ai; ai = ai->ai_next) {
-        if (!af || ai->ai_family == af)
+        if (!af || ai->ai_family == af) {
             break;
+        }
     }
-    if (!ai)
-        ai = res; /*  anything...  */
 
-    if (ai->ai_addrlen > sizeof(*addr))
-        return -1; /*  paranoia   */
+    // If no matching address family is found, just use the first available
+    if (!ai) {
+        ai = res;  // anything, as a fallback
+    }
+
+    // Check if the address length is valid
+    if (ai->ai_addrlen > sizeof(*addr)) {
+        freeaddrinfo(res);  // Cleanup before returning
+        return -1;          // Paranoia check
+    }
+
+    // Copy the address into the provided sockaddr_any structure
     memcpy(addr, ai->ai_addr, ai->ai_addrlen);
 
-    freeaddrinfo(res);
+    freeaddrinfo(res);  // Cleanup after processing
 
-    /*  No v4mapped addresses in real network, interpret it as ipv4 anyway   */
+    // If the address is IPv6 and is a mapped IPv4 address, handle it as IPv4
     if (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr->sin6.sin6_addr)) {
-        if (af == AF_INET6)
-            return -1;
+        if (af == AF_INET6) {
+            return -1;  // If IPv6 is requested, return an error for v4mapped addresses
+        }
+
+        // Convert the v4mapped address to IPv4
         addr->sa.sa_family = AF_INET;
-        addr->sin.sin_addr.s_addr = addr->sin6.sin6_addr.s6_addr32[3];
+        addr->sin.sin_addr.s_addr = addr->sin6.sin6_addr.s6_addr32[3];  // Extract IPv4 address from the v4mapped address
     }
 
-    return 0;
+    return 0;  // Success
 }
 
 static void make_fd_used(int fd) {
@@ -289,7 +308,7 @@ static void init_ip_options(void) {
     if (!num_gateways)
         return;
 
-    /*  check for TYPE,ADDR,ADDR... form   */
+    /* Check for TYPE, ADDR, ADDR... form for IPv6 gateways */
     if (af == AF_INET6 && num_gateways > 1 && gateways[0]) {
         char* q;
         unsigned int value = strtoul(gateways[0], &q, 0);
@@ -302,30 +321,35 @@ static void init_ip_options(void) {
         }
     }
 
-    max = af == AF_INET ? MAX_GATEWAYS_4 : MAX_GATEWAYS_6;
+    max = (af == AF_INET) ? MAX_GATEWAYS_4 : MAX_GATEWAYS_6;
     if (num_gateways > max)
         ex_error("Too many gateways specified. No more than %d", max);
 
-    gates = alloca(num_gateways * sizeof(*gates));
+    // Dynamically allocate memory for gates
+    gates = malloc(num_gateways * sizeof(*gates));
+    if (!gates)
+        error("malloc");
 
     for (i = 0; i < num_gateways; i++) {
         if (!gateways[i])
-            error("strdup");
+            error("Invalid gateway address");
 
         if (getaddr(gateways[i], &gates[i]) < 0)
-            ex_error(""); /*  already reported   */
-        if (gates[i].sa.sa_family != af)
-            ex_error("IP versions mismatch in gateway addresses");
+            ex_error("Failed to resolve gateway address");  // Error already reported by getaddr
 
-        free(gateways[i]);
+        if (gates[i].sa.sa_family != af)
+            ex_error("IP version mismatch in gateway addresses");
+
+        free(gateways[i]);  // Free the original gateway string
     }
 
-    free(gateways);
-    gateways = NULL;
+    free(gateways);   // Free the gateways array itself
+    gateways = NULL;  // Set to NULL to avoid dangling pointers
 
     if (af == AF_INET) {
         struct in_addr* in;
 
+        // Allocate space for the routing buffer
         rtbuf_len = 4 + (num_gateways + 1) * sizeof(*in);
         rtbuf = malloc(rtbuf_len);
         if (!rtbuf)
@@ -334,7 +358,8 @@ static void init_ip_options(void) {
         in = (struct in_addr*)&rtbuf[4];
         for (i = 0; i < num_gateways; i++)
             memcpy(&in[i], &gates[i].sin.sin_addr, sizeof(*in));
-        /*  final hop   */
+
+        // Final hop (destination address)
         memcpy(&in[i], &dst_addr.sin.sin_addr, sizeof(*in));
         i++;
 
@@ -347,7 +372,7 @@ static void init_ip_options(void) {
         struct in6_addr* in6;
         struct ip6_rthdr* rth;
 
-        /*  IPV6_RTHDR_TYPE_0 length is 8   */
+        // IPV6_RTHDR_TYPE_0 length is 8
         rtbuf_len = 8 + num_gateways * sizeof(*in6);
         rtbuf = malloc(rtbuf_len);
         if (!rtbuf)
@@ -359,14 +384,15 @@ static void init_ip_options(void) {
         rth->ip6r_type = ipv6_rthdr_type;
         rth->ip6r_segleft = num_gateways;
 
-        *((uint32_t*)(rth + 1)) = 0;
+        *((uint32_t*)(rth + 1)) = 0;  // Padding for the routing header
 
         in6 = (struct in6_addr*)(rtbuf + 8);
         for (i = 0; i < num_gateways; i++)
             memcpy(&in6[i], &gates[i].sin6.sin6_addr, sizeof(*in6));
     }
 
-    return;
+    // Clean up allocated memory for gateways array
+    free(gates);
 }
 
 /*	Command line stuff	    */
