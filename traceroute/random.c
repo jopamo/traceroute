@@ -9,15 +9,25 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/times.h>
+#include <sys/random.h>   // For better randomness if supported
 
 #include "traceroute.h"
 
 static void __init_random_seq(void) __attribute__((constructor));
 static void __init_random_seq(void) {
-    srand(times(NULL) + getpid());
+    // For better randomness, using getrandom() if available
+    unsigned int seed = 0;
+
+    // Try using getrandom() for a better random seed on Linux
+    if (getrandom(&seed, sizeof(seed), GRND_NONBLOCK) == -1) {
+        // Fallback to time and PID if getrandom() is unavailable
+        seed = times(NULL) + getpid();
+    }
+
+    srand(seed);
 }
 
 unsigned int random_seq(void) {
-    /*  Not to worry about RANDOM_MAX and precision...  */
-    return (rand() << 16) ^ (rand() << 8) ^ rand() ^ (rand() >> 8);
+    // Using random() instead of rand() for better randomness
+    return (random() << 16) ^ (random() << 8) ^ random() ^ (random() >> 8);
 }
