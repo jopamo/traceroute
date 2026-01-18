@@ -19,4 +19,6 @@ inc_dirs = include_directories(
 )
 
 subdir('libsupp')
+subdir('src')
 subdir('traceroute')
+subdir('tests')
