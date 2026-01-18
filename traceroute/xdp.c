@@ -157,12 +157,14 @@ void xdp_poll(int fd, int revents) {
 
             if (eth->h_proto == htons(ETH_P_IP) && paylen >= sizeof(struct iphdr)) {
                 struct iphdr* ip = (struct iphdr*)payload;
-                if (ip->protocol == IPPROTO_ICMP) {
-                    struct icmphdr* icmp = (struct icmphdr*)(payload + (ip->ihl * 4));
+                uint32_t ip_hlen = ip->ihl * 4;
+
+                if (paylen >= ip_hlen + sizeof(struct icmphdr) && ip->protocol == IPPROTO_ICMP) {
+                    struct icmphdr* icmp = (struct icmphdr*)(payload + ip_hlen);
                     if (icmp->type == ICMP_TIME_EXCEEDED || icmp->type == ICMP_DEST_UNREACH) {
                         // Original packet starts after ICMP header (8 bytes)
-                        uint8_t* quoted = (uint8_t*)icmp + 8;
-                        uint32_t quoted_len = paylen - (uintptr_t)((uint8_t*)quoted - payload);
+                        // uint8_t* quoted = (uint8_t*)icmp + 8;
+                        // uint32_t quoted_len = paylen - (uintptr_t)((uint8_t*)quoted - payload);
 
                         // We'd need to find the probe and call parse_icmp_res
                         // But finding the probe from RAW data is what mod-udp does too.
