@@ -147,3 +147,22 @@ int net_recv_packet(int fd, int check_err_queue, PacketResult* result) {
 
     return 1;
 }
+
+int net_check_ipv6_support(void) {
+    static int supported = -1;
+
+    if (supported != -1) {
+        return supported;
+    }
+
+    int fd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        supported = 0;
+    }
+    else {
+        close(fd);
+        supported = 1;
+    }
+
+    return supported;
+}
