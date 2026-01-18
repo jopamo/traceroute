@@ -11,11 +11,15 @@ unit_test_sources = [
   'test_correlator.c',
   'test_flow.c',
   'test_rtt.c',
+  'test_scheduler.c',
+  'test_dns_cache.c',
   '../../src/io/parse.c',
   '../../src/correlate/match.c',
   '../../src/correlate/correlator.c',
   '../../src/correlate/flow.c',
   '../../src/correlate/rtt.c',
+  '../../src/core/scheduler.c',
+  '../../src/core/dns_cache.c',
 ]
 
 unit_test_inc = include_directories('.', 'common', '../../src', '../../traceroute')

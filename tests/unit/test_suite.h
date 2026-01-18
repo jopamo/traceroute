@@ -12,5 +12,6 @@ void register_test_correlator(void);
 void register_test_flow(void);
 void register_test_rtt(void);
 void register_test_scheduler(void);
+void register_test_dns_cache(void);
 
 #endif /* TEST_UNIT_TEST_SUITE_H */

@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     register_test_flow();
     register_test_rtt();
     register_test_scheduler();
+    register_test_dns_cache();
 
     printf("All unit tests passed!\n");
     return 0;
