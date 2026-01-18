@@ -153,6 +153,8 @@ static int try_extension(probe* pb, char* buf, size_t len) {
     char* curr = str;
     char* end = str + sizeof(str) / sizeof(*str);
 
+    str[0] = '\0';
+
     /*  a check for len >= 8 already done for all cases   */
 
     if (iext->version != 2)
@@ -213,7 +215,8 @@ static int try_extension(probe* pb, char* buf, size_t len) {
     if (len)
         return -1;
 
-    pb->ext = strdup(str);
+    if (curr > str)
+        pb->ext = strdup(str);
 
     return 0;
 }

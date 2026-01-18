@@ -7,6 +7,7 @@ void register_test_ipv6_ext(void);
 void register_test_parse_transport(void);
 void register_test_parse_icmp(void);
 void register_test_icmp_quote(void);
+void register_test_match(void);
 void register_test_cmsg(void);
 void register_test_correlator(void);
 void register_test_flow(void);
@@ -16,6 +17,9 @@ void register_test_dns_cache(void);
 void register_test_json_writer(void);
 void register_test_render(void);
 void register_test_cli(void);
+void register_test_bpf(void);
+void register_test_extension(void);
+void register_test_export(void);
 void register_test_property(void);
 
 #endif /* TEST_UNIT_TEST_SUITE_H */

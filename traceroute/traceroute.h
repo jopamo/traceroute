@@ -6,6 +6,9 @@
     See COPYING for the status of this software.
 */
 
+#ifndef TRACEROUTE_TRACEROUTE_H
+#define TRACEROUTE_TRACEROUTE_H
+
 #include <netinet/in.h>
 
 #include <clif.h>
@@ -110,6 +113,7 @@ void tr_export_jsonl_probe(probe* pb);
 void tr_export_jsonl_end(void);
 
 int bpf_init(const char* obj_path);
+int bpf_decode_event(void* data, size_t data_sz);
 void bpf_poll(int fd, int revents);
 void bpf_print_histograms(void);
 void bpf_cleanup(void);
@@ -123,3 +127,4 @@ void xdp_cleanup(void);
     static void __init_##MOD(void) {                             \
         tr_register_module(&MOD);                                \
     }
+#endif /* TRACEROUTE_TRACEROUTE_H */

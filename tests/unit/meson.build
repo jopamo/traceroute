@@ -1,6 +1,7 @@
 unit_test_sources = [
   'runner.c',
   'common/fixtures.c',
+  'common/mocks.c',
   'test_parse_ipv4.c',
   'test_parse_ipv6.c',
   'test_ipv6_ext.c',
@@ -8,6 +9,7 @@ unit_test_sources = [
   'test_parse_icmp.c',
   'test_icmp_quote.c',
   'test_cmsg.c',
+  'test_match.c',
   'test_correlator.c',
   'test_flow.c',
   'test_rtt.c',
@@ -16,6 +18,9 @@ unit_test_sources = [
   'test_json_writer.c',
   'test_render.c',
   'test_cli.c',
+  'test_bpf.c',
+  'test_extension.c',
+  'test_export.c',
   'test_property.c',
   '../../src/io/parse.c',
   '../../src/correlate/match.c',
@@ -27,13 +32,18 @@ unit_test_sources = [
   '../../src/core/json_writer.c',
   '../../src/core/render.c',
   '../../src/core/cli.c',
+  '../../traceroute/bpf.c',
+  '../../traceroute/extension.c',
+  '../../traceroute/export.c',
+  '../../traceroute/csum.c',
 ]
 
-unit_test_inc = include_directories('.', 'common', '../../src', '../../traceroute')
+unit_test_inc = include_directories('.', 'common', '../../src', '../../traceroute', '../../libsupp')
 
 unit_test_exe = executable('unit_tests',
   unit_test_sources,
   include_directories: unit_test_inc,
+  dependencies: [libbpf_dep, libxdp_dep, libsupp_dep],
   c_args: ['-fsanitize=address,undefined'],
   link_args: ['-fsanitize=address,undefined'],
 )
