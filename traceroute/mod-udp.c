@@ -37,7 +37,7 @@ static char* data = NULL;
 static size_t* length_p;
 
 static void fill_data(size_t* packet_len_p) {
-    int i;
+    size_t i;
 
     length_p = packet_len_p;
 
@@ -86,7 +86,10 @@ static void set_coverage(int sk) {
         error("UDPLITE_RECV_CSCOV");
 }
 
-static CLIF_option udplite_options[] = {{0, "coverage", "NUM", "Set udplite send coverage to %s (default is " _TEXT(MIN_COVERAGE) ")", CLIF_set_uint, &coverage, 0, CLIF_ABBREV}, CLIF_END_OPTION};
+static CLIF_option udplite_options[] = {
+    {0, "coverage", "NUM", "Set udplite send coverage to %s (default is " _TEXT(MIN_COVERAGE) ")", CLIF_set_uint,
+     &coverage, 0, CLIF_ABBREV},
+    CLIF_END_OPTION};
 
 static int udplite_init(const sockaddr_any* dest, unsigned int port_seq, size_t* packet_len_p) {
     dest_addr = *dest;
@@ -185,7 +188,7 @@ static tr_module default_ops = {
     .header_len = sizeof(struct udphdr),
 };
 
-TR_MODULE(default_ops);
+TR_MODULE(default_ops)
 
 static tr_module udp_ops = {
     .name = "udp",
@@ -196,7 +199,7 @@ static tr_module udp_ops = {
     .header_len = sizeof(struct udphdr),
 };
 
-TR_MODULE(udp_ops);
+TR_MODULE(udp_ops)
 
 static tr_module udplite_ops = {
     .name = "udplite",
@@ -208,4 +211,4 @@ static tr_module udplite_ops = {
     .options = udplite_options,
 };
 
-TR_MODULE(udplite_ops);
+TR_MODULE(udplite_ops)

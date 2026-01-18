@@ -72,11 +72,12 @@ static struct {
     const char* name;
     unsigned int flag;
 } tcp_flags[] = {
-    {"fin", TH_FIN}, {"syn", TH_SYN}, {"rst", TH_RST}, {"psh", TH_PSH}, {"ack", TH_ACK}, {"urg", TH_URG}, {"ece", TH_ECE}, {"cwr", TH_CWR},
+    {"fin", TH_FIN}, {"syn", TH_SYN}, {"rst", TH_RST}, {"psh", TH_PSH},
+    {"ack", TH_ACK}, {"urg", TH_URG}, {"ece", TH_ECE}, {"cwr", TH_CWR},
 };
 
 static char* print_tcp_info(struct tcphdr* tcp, size_t len) {
-    int i;
+    size_t i;
     char str[128]; /*  enough...  */
     char* curr = str;
     char* end = str + (sizeof(str) / sizeof(*str) - 1);
@@ -84,7 +85,7 @@ static char* print_tcp_info(struct tcphdr* tcp, size_t len) {
     unsigned int flags;
     uint8_t* ptr;
 
-    if (len < sizeof(struct tcphdr) || len != tcp->doff << 2)
+    if (len < sizeof(struct tcphdr) || len != (size_t)(tcp->doff << 2))
         return NULL;
 
     flags = TH_FLAGS(tcp);
@@ -103,7 +104,8 @@ static char* print_tcp_info(struct tcphdr* tcp, size_t len) {
     len -= sizeof(struct tcphdr);
 
     while (len > 1) {
-        int op = *ptr, oplen = ptr[1];
+        int op = *ptr;
+        size_t oplen = ptr[1];
         char buf[16];
         const char* name = NULL;
 
@@ -158,7 +160,7 @@ static char* print_tcp_info(struct tcphdr* tcp, size_t len) {
 }
 
 static int set_tcp_flag(CLIF_option* optn, char* arg) {
-    int i;
+    size_t i;
 
     for (i = 0; i < sizeof(tcp_flags) / sizeof(*tcp_flags); i++) {
         if (!strcmp(optn->long_opt, tcp_flags[i].name)) {
@@ -197,45 +199,46 @@ static int set_mss(CLIF_option* optn, char* arg) {
     return 0;
 }
 
-static CLIF_option tcp_options[] = {{0, "syn", 0,
-                                     "Set tcp flag SYN (default if no other "
-                                     "tcp flags specified)",
-                                     set_tcp_flag, 0, 0, 0},
-                                    {0, "ack", 0, "Set tcp flag ACK,", set_tcp_flag, 0, 0, 0},
-                                    {0, "fin", 0, "FIN,", set_tcp_flag, 0, 0, 0},
-                                    {0, "rst", 0, "RST,", set_tcp_flag, 0, 0, 0},
-                                    {0, "psh", 0, "PSH,", set_tcp_flag, 0, 0, 0},
-                                    {0, "urg", 0, "URG,", set_tcp_flag, 0, 0, 0},
-                                    {0, "ece", 0, "ECE,", set_tcp_flag, 0, 0, 0},
-                                    {0, "cwr", 0, "CWR", set_tcp_flag, 0, 0, 0},
-                                    {0, "flags", "NUM", "Set tcp flags exactly to value %s", set_tcp_flags, 0, 0, CLIF_ABBREV},
-                                    {0, "ecn", 0,
-                                     "Send syn packet with tcp flags ECE and CWR "
-                                     "(for Explicit Congestion Notification, rfc3168)",
-                                     set_flag, (void*)FL_ECN, 0, 0},
-                                    {0, "sack", 0, "Use sack,", set_flag, (void*)FL_SACK, 0, 0},
-                                    {0, "timestamps", 0, "timestamps,", set_flag, (void*)FL_TSTAMP, 0, CLIF_ABBREV},
-                                    {0, "window_scaling", 0, "window_scaling option for tcp", set_flag, (void*)FL_WSCALE, 0, CLIF_ABBREV},
-                                    {0, "sysctl", 0,
-                                     "Use current sysctl (/proc/sys/net/*) setting "
-                                     "for the tcp options above and ecn. Always set by default "
-                                     "(with \"syn\") if nothing else specified",
-                                     CLIF_set_flag, &sysctl, 0, 0},
-                                    {0, "fastopen", 0, "Use fastopen tcp option (when syn, cookie negotiation only)", CLIF_set_flag, &fastopen, 0, 0},
-                                    {0, "reuse", 0,
-                                     "Allow to reuse local port numbers "
-                                     "for the huge workloads (SO_REUSEADDR)",
-                                     CLIF_set_flag, &reuse, 0, 0},
-                                    {0, "mss", "NUM",
-                                     "Use value of %s (or unchanged) for maxseg tcp option (when syn), "
-                                     "and discover its clamping along the path being traced",
-                                     set_mss, &mss, 0, CLIF_OPTARG},
-                                    {0, "info", 0,
-                                     "Print tcp flags and options of final tcp replies "
-                                     "when target host is reached. Useful to determine whether "
-                                     "an application listens the port etc.",
-                                     CLIF_set_flag, &info, 0, 0},
-                                    CLIF_END_OPTION};
+static CLIF_option tcp_options[] = {
+    {0, "syn", 0,
+     "Set tcp flag SYN (default if no other "
+     "tcp flags specified)",
+     set_tcp_flag, 0, 0, 0},
+    {0, "ack", 0, "Set tcp flag ACK,", set_tcp_flag, 0, 0, 0},
+    {0, "fin", 0, "FIN,", set_tcp_flag, 0, 0, 0},
+    {0, "rst", 0, "RST,", set_tcp_flag, 0, 0, 0},
+    {0, "psh", 0, "PSH,", set_tcp_flag, 0, 0, 0},
+    {0, "urg", 0, "URG,", set_tcp_flag, 0, 0, 0},
+    {0, "ece", 0, "ECE,", set_tcp_flag, 0, 0, 0},
+    {0, "cwr", 0, "CWR", set_tcp_flag, 0, 0, 0},
+    {0, "flags", "NUM", "Set tcp flags exactly to value %s", set_tcp_flags, 0, 0, CLIF_ABBREV},
+    {0, "ecn", 0,
+     "Send syn packet with tcp flags ECE and CWR "
+     "(for Explicit Congestion Notification, rfc3168)",
+     set_flag, (void*)FL_ECN, 0, 0},
+    {0, "sack", 0, "Use sack,", set_flag, (void*)FL_SACK, 0, 0},
+    {0, "timestamps", 0, "timestamps,", set_flag, (void*)FL_TSTAMP, 0, CLIF_ABBREV},
+    {0, "window_scaling", 0, "window_scaling option for tcp", set_flag, (void*)FL_WSCALE, 0, CLIF_ABBREV},
+    {0, "sysctl", 0,
+     "Use current sysctl (/proc/sys/net/*) setting "
+     "for the tcp options above and ecn. Always set by default "
+     "(with \"syn\") if nothing else specified",
+     CLIF_set_flag, &sysctl, 0, 0},
+    {0, "fastopen", 0, "Use fastopen tcp option (when syn, cookie negotiation only)", CLIF_set_flag, &fastopen, 0, 0},
+    {0, "reuse", 0,
+     "Allow to reuse local port numbers "
+     "for the huge workloads (SO_REUSEADDR)",
+     CLIF_set_flag, &reuse, 0, 0},
+    {0, "mss", "NUM",
+     "Use value of %s (or unchanged) for maxseg tcp option (when syn), "
+     "and discover its clamping along the path being traced",
+     set_mss, &mss, 0, CLIF_OPTARG},
+    {0, "info", 0,
+     "Print tcp flags and options of final tcp replies "
+     "when target host is reached. Useful to determine whether "
+     "an application listens the port etc.",
+     CLIF_set_flag, &info, 0, 0},
+    CLIF_END_OPTION};
 
 #define SYSCTL_PREFIX "/proc/sys/net/ipv4/tcp_"
 static int check_sysctl(const char* name) {
@@ -294,7 +297,8 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
         error("getsockname");
 
     len = sizeof(mtu);
-    if (getsockopt(raw_sk, af == AF_INET ? SOL_IP : SOL_IPV6, af == AF_INET ? IP_MTU : IPV6_MTU, &mtu, &len) < 0 || mtu < 576)
+    if (getsockopt(raw_sk, af == AF_INET ? SOL_IP : SOL_IPV6, af == AF_INET ? IP_MTU : IPV6_MTU, &mtu, &len) < 0 ||
+        mtu < 576)
         mtu = 576;
 
     /*  mss = mtu - headers   */
@@ -589,4 +593,4 @@ static tr_module tcp_ops = {
     .options = tcp_options,
 };
 
-TR_MODULE(tcp_ops);
+TR_MODULE(tcp_ops)

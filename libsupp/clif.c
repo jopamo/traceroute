@@ -260,7 +260,8 @@ static void err_bad_arg(const CLIF_option* optn, char c, int n) {
         s = show_long(optn);
     }
 
-    err_report("%s `%s' (argc %d) requires an argument: `%s'", (c || !is_keyword(optn)) ? "Option" : "Keyword", ss, n, s);
+    err_report("%s `%s' (argc %d) requires an argument: `%s'", (c || !is_keyword(optn)) ? "Option" : "Keyword", ss, n,
+               s);
 }
 
 static void err_bad_res(const CLIF_option* optn, char c, const char* opt_arg, int n) {
@@ -327,7 +328,8 @@ static CLIF_option* find_long(char* arg, char** arg_p, unsigned int match, unsig
         for (a = arg, o = optn->long_opt; *o && *a == *o; a++, o++)
             ;
 
-        if (*a == '\0' || (*a == '=' && optn->arg_name && !(flags & _CLIF_STRICT_NOEQUAL))) { /*  looks like end of option...  */
+        if (*a == '\0' ||
+            (*a == '=' && optn->arg_name && !(flags & _CLIF_STRICT_NOEQUAL))) { /*  looks like end of option...  */
 
             if (!*o) { /*  explicit match found   */
                 if (*a == '=' && arg_p)
@@ -406,7 +408,11 @@ static int call_function(CLIF_option* optn, char* opt_arg, char sym) {
     return function(optn, opt_arg);
 }
 
-int CLIF_parse_cmdline(int argc, char* argv[], CLIF_option* option_list, CLIF_argument* argument_list, unsigned int parse_flags) {
+int CLIF_parse_cmdline(int argc,
+                       char* argv[],
+                       CLIF_option* option_list,
+                       CLIF_argument* argument_list,
+                       unsigned int parse_flags) {
     int i, j;
     CLIF_option* optn;
     CLIF_argument* argm;
@@ -766,10 +772,10 @@ static void box_output(int start, int left, int width, const char* str, const ch
     char buf[1024];
     char spacer[128]; /*  assume it is enough   */
 
-    if (left > sizeof(spacer) - 2)
-        left = sizeof(spacer) - 2;
-    if (width > sizeof(buf) - 1)
-        width = sizeof(buf) - 1;
+    if (left > (int)sizeof(spacer) - 2)
+        left = (int)sizeof(spacer) - 2;
+    if (width > (int)sizeof(buf) - 1)
+        width = (int)sizeof(buf) - 1;
 
     spacer[0] = '\n';
     memset(spacer + 1, ' ', left);
@@ -886,8 +892,6 @@ void CLIF_print_options(const char* header, const CLIF_option* option_list) {
         if (excl_cnt == 1) {
             if ((curr.parse_flags & CLIF_STRICT_EXCL) && curr.option_list == option_list)
                 fprintf(stderr, "Anyway `%s' must be specified.\n", excl);
-            else /*  simple ordinary option, because excl_cnt == 1 ... */
-                ;
         }
         else
             fprintf(stderr,
@@ -932,7 +936,10 @@ void CLIF_print_arguments(const char* header, const CLIF_argument* argument_list
     return;
 }
 
-void CLIF_print_usage(const char* header, const char* progname, const CLIF_option* option_list, const CLIF_argument* argument_list) {
+void CLIF_print_usage(const char* header,
+                      const char* progname,
+                      const CLIF_option* option_list,
+                      const CLIF_argument* argument_list) {
     if (!progname && curr.argv)
         progname = curr.argv[0];
 
@@ -1024,8 +1031,6 @@ void CLIF_print_usage(const char* header, const char* progname, const CLIF_optio
             if (optn->short_opt) {
                 if (optn->arg_name)
                     fprintf(stderr, " [ %s ]", show_short(optn));
-                else
-                    /*  already handled   */;
             }
             else
                 fprintf(stderr, " [ %s ]", show_long(optn));
@@ -1088,7 +1093,16 @@ int CLIF_current_help(void) {
 
 /*  Common useful option handlers.  */
 
+int CLIF_help_handler(CLIF_option* optn, char* arg) {
+    (void)optn;
+    (void)arg;
+
+    return CLIF_current_help();
+}
+
 int CLIF_version_handler(CLIF_option* optn, char* arg) {
+    (void)arg;
+
     if (!optn->data)
         return -1;
 
@@ -1098,6 +1112,8 @@ int CLIF_version_handler(CLIF_option* optn, char* arg) {
 }
 
 int CLIF_set_flag(CLIF_option* optn, char* arg) {
+    (void)arg;
+
     if (!optn->data)
         return -1;
 
@@ -1107,6 +1123,8 @@ int CLIF_set_flag(CLIF_option* optn, char* arg) {
 }
 
 int CLIF_unset_flag(CLIF_option* optn, char* arg) {
+    (void)arg;
+
     if (!optn->data)
         return -1;
 
@@ -1129,6 +1147,8 @@ int CLIF_set_string(CLIF_option* optn, char* arg) {
 }
 
 int CLIF_arg_string(CLIF_argument* argm, char* arg, int index) {
+    (void)index;
+
     return set_string(argm->data, arg);
 }
 
@@ -1178,14 +1198,20 @@ int CLIF_set_double(CLIF_option* optn, char* arg) {
 }
 
 int CLIF_arg_int(CLIF_argument* argm, char* arg, int index) {
+    (void)index;
+
     return set_int(argm->data, arg);
 }
 
 int CLIF_arg_uint(CLIF_argument* argm, char* arg, int index) {
+    (void)index;
+
     return set_uint(argm->data, arg);
 }
 
 int CLIF_arg_double(CLIF_argument* argm, char* arg, int index) {
+    (void)index;
+
     return set_double(argm->data, arg);
 }
 
@@ -1194,12 +1220,12 @@ int CLIF_call_func(CLIF_option* optn, char* arg) {
         return -1;
 
     if (optn->arg_name) {
-        int (*func)(char*) = optn->data;
+        int (*func)(char*) = (int (*)(char*))optn->data;
 
         return func(arg);
     }
     else {
-        int (*func)(void) = optn->data;
+        int (*func)(void) = (int (*)(void))optn->data;
 
         return func();
     }

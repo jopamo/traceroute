@@ -73,15 +73,23 @@ struct CLIF_argument_struct {
 
 #define CLIF_MIN_ABBREV 2 /*  a minimal match length in abbrev  */
 
-extern int CLIF_parse(int argc, char** argv, CLIF_option* option_list, CLIF_argument* arg_list, unsigned int parse_flags);
+extern int CLIF_parse(int argc,
+                      char** argv,
+                      CLIF_option* option_list,
+                      CLIF_argument* arg_list,
+                      unsigned int parse_flags);
 /*  history compatibility...  */
 #define CLIF_parse_cmdline(ARGC, ARGV, OPTN, ARGS, FLAGS) CLIF_parse(ARGC, ARGV, OPTN, ARGS, FLAGS)
 
 extern void CLIF_print_options(const char* header, const CLIF_option* option_list);
 extern void CLIF_print_arguments(const char* header, const CLIF_argument* argument_list);
-extern void CLIF_print_usage(const char* header, const char* progname, const CLIF_option* option_list, const CLIF_argument* argument_list);
+extern void CLIF_print_usage(const char* header,
+                             const char* progname,
+                             const CLIF_option* option_list,
+                             const CLIF_argument* argument_list);
 
 extern int CLIF_current_help(void);
+extern int CLIF_help_handler(CLIF_option* optn, char* arg);
 
 /*  Common useful option handlers.  */
 extern int CLIF_version_handler(CLIF_option* optn, char* arg);
@@ -101,7 +109,8 @@ extern int CLIF_arg_func(CLIF_argument* argm, char* arg, int index);
 
 /*  Some useful macros.  */
 
-#define CLIF_HELP_OPTION {0, "help", 0, "Read this help and exit", CLIF_call_func, CLIF_current_help, 0, CLIF_EXTRA | CLIF_EXIT}
-#define CLIF_VERSION_OPTION(STR) {"V", "version", 0, "Print version info and exit", CLIF_version_handler, STR, 0, CLIF_EXTRA | CLIF_EXIT}
+#define CLIF_HELP_OPTION {0, "help", 0, "Read this help and exit", CLIF_help_handler, 0, 0, CLIF_EXTRA | CLIF_EXIT}
+#define CLIF_VERSION_OPTION(STR) \
+    {"V", "version", 0, "Print version info and exit", CLIF_version_handler, STR, 0, CLIF_EXTRA | CLIF_EXIT}
 
 #endif /*  _CLIF_H   */

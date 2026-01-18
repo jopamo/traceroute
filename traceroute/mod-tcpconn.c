@@ -205,4 +205,4 @@ static tr_module tcp_ops = {
     .expire_probe = tcp_expire_probe,
 };
 
-TR_MODULE(tcp_ops);
+TR_MODULE(tcp_ops)

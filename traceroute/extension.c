@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include "traceroute.h"
 
@@ -22,7 +23,7 @@ struct icmp_ext_object {
     uint16_t length;
     uint8_t class;
     uint8_t c_type;
-    uint8_t data[0];
+    uint8_t data[];
 };
 
 #define MPLS_CLASS 1
@@ -31,12 +32,25 @@ struct icmp_ext_object {
 #define IFACE_INFO_CLASS 2
 #define IFACE_INFO_NAME_LEN 64
 
-#define do_snprintf(CURR, END, FMT, ARGS...)               \
-    do {                                                   \
-        CURR += snprintf(CURR, END - CURR, (FMT), ##ARGS); \
-        if (CURR > END)                                    \
-            CURR = END;                                    \
-    } while (0)
+static void append_snprintf(char** curr, char* end, const char* fmt, ...) {
+    va_list ap;
+    int n;
+
+    if (*curr >= end)
+        return;
+
+    va_start(ap, fmt);
+    n = vsnprintf(*curr, end - *curr, fmt, ap);
+    va_end(ap);
+
+    if (n < 0)
+        return;
+
+    if (*curr + n > end)
+        *curr = end;
+    else
+        *curr += n;
+}
 
 /*	rfc 5837 stuff    */
 
@@ -60,11 +74,11 @@ static int print_iface_info(struct icmp_ext_object* obj, char* buf, size_t lengt
 
     ui = (uint32_t*)tmp;
 
-    do_snprintf(curr, end, "%s:", roles[(obj->c_type >> 6) & 0x03]);
+    append_snprintf(&curr, end, "%s:", roles[(obj->c_type >> 6) & 0x03]);
     start = curr;
 
     if (obj->c_type & 0x08) /*  index   */
-        do_snprintf(curr, end, "%u", ntohl(*ui++));
+        append_snprintf(&curr, end, "%u", ntohl(*ui++));
 
     if (obj->c_type & 0x04) { /*  IP address   */
         sockaddr_any addr;
@@ -90,7 +104,7 @@ static int print_iface_info(struct icmp_ext_object* obj, char* buf, size_t lengt
         memcpy(ptr, ui, len);
         ui += len / sizeof(*ui);
 
-        do_snprintf(curr, end, "%s%s", (curr > start) ? "," : "", addr2str(&addr));
+        append_snprintf(&curr, end, "%s%s", (curr > start) ? "," : "", addr2str(&addr));
     }
 
     if (obj->c_type & 0x02) { /*  name   */
@@ -119,13 +133,13 @@ static int print_iface_info(struct icmp_ext_object* obj, char* buf, size_t lengt
         }
         *p++ = '\0';
 
-        do_snprintf(curr, end, "%s\"%s\"", (curr > start) ? "," : "", str);
+        append_snprintf(&curr, end, "%s\"%s\"", (curr > start) ? "," : "", str);
 
         ui += len / sizeof(*ui);
     }
 
     if (obj->c_type & 0x01) /*  mtu   */
-        do_snprintf(curr, end, "%smtu=%u", (curr > start) ? "," : "", ntohl(*ui++));
+        append_snprintf(&curr, end, "%smtu=%u", (curr > start) ? "," : "", ntohl(*ui++));
 
     if (ui > (uint32_t*)(tmp + data_len))
         return 0;
@@ -169,14 +183,16 @@ static int try_extension(probe* pb, char* buf, size_t len) {
         if (curr > (char*)str && curr < end)
             *curr++ = ';'; /*  a separator   */
 
-        if (obj->class == MPLS_CLASS && obj->c_type == MPLS_C_TYPE && n >= 1) { /*  people prefer MPLS (rfc4950) to be parsed...  */
+        if (obj->class == MPLS_CLASS && obj->c_type == MPLS_C_TYPE &&
+            n >= 1) { /*  people prefer MPLS (rfc4950) to be parsed...  */
 
-            do_snprintf(curr, end, "MPLS:");
+            append_snprintf(&curr, end, "MPLS:");
 
             for (i = 0; i < n; i++, ui++) {
                 uint32_t mpls = ntohl(*ui);
 
-                do_snprintf(curr, end, "%sL=%u,E=%u,S=%u,T=%u", i ? "/" : "", mpls >> 12, (mpls >> 9) & 0x7, (mpls >> 8) & 0x1, mpls & 0xff);
+                append_snprintf(&curr, end, "%sL=%u,E=%u,S=%u,T=%u", i ? "/" : "", mpls >> 12, (mpls >> 9) & 0x7,
+                                (mpls >> 8) & 0x1, mpls & 0xff);
             }
         }
         else if (obj->class == IFACE_INFO_CLASS && (i = print_iface_info(obj, curr, end - curr)) > 0) {
@@ -184,10 +200,10 @@ static int try_extension(probe* pb, char* buf, size_t len) {
         }
         else { /*  common case...  */
 
-            do_snprintf(curr, end, "%u/%u:", obj->class, obj->c_type);
+            append_snprintf(&curr, end, "%u/%u:", obj->class, obj->c_type);
 
             for (i = 0; i < n && curr < end; i++, ui++)
-                do_snprintf(curr, end, "%s%08x", i ? "," : "", ntohl(*ui));
+                append_snprintf(&curr, end, "%s%08x", i ? "," : "", ntohl(*ui));
         }
 
         buf += objlen;

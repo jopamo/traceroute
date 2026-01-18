@@ -19,7 +19,7 @@ static unsigned int num_polls = 0;
 static unsigned int max_polls = 0;  // Track the allocated size to optimize reallocations
 
 void add_poll(int fd, int events) {
-    int i;
+    unsigned int i;
 
     // Look for the first empty spot
     for (i = 0; i < num_polls && pfd[i].fd > 0; i++)
@@ -41,7 +41,7 @@ void add_poll(int fd, int events) {
 }
 
 void del_poll(int fd) {
-    int i;
+    unsigned int i;
 
     // Look for the file descriptor to remove
     for (i = 0; i < num_polls && pfd[i].fd != fd; i++)
@@ -52,8 +52,8 @@ void del_poll(int fd) {
     }
 }
 
-static int cleanup_polls(void) {
-    int i, j;
+static unsigned int cleanup_polls(void) {
+    unsigned int i, j;
 
     // Compact the array to remove holes (invalid file descriptors)
     for (i = 0; i < num_polls && pfd[i].fd > 0; i++)
@@ -72,7 +72,8 @@ static int cleanup_polls(void) {
 }
 
 void do_poll(double timeout, void (*callback)(int fd, int revents)) {
-    int nfds, n, i;
+    unsigned int nfds, i;
+    int n;
 
     nfds = cleanup_polls();  // Get the number of active file descriptors
 
