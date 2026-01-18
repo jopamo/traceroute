@@ -5,14 +5,15 @@ on:
   pull_request:
 
 jobs:
-  linux-sanitizers:
+  san:
     runs-on: ubuntu-latest
     container: fedora:rawhide
+    name: san-${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: asan-ubsan
+          - name: asan
             meson_sanitize: "address,undefined"
             extra_cflags: "-fsanitize-address-use-after-scope"
             runtime_env: |
