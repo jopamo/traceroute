@@ -13,6 +13,9 @@ unit_test_sources = [
   'test_rtt.c',
   'test_scheduler.c',
   'test_dns_cache.c',
+  'test_json_writer.c',
+  'test_render.c',
+  'test_cli.c',
   '../../src/io/parse.c',
   '../../src/correlate/match.c',
   '../../src/correlate/correlator.c',
@@ -20,6 +23,9 @@ unit_test_sources = [
   '../../src/correlate/rtt.c',
   '../../src/core/scheduler.c',
   '../../src/core/dns_cache.c',
+  '../../src/core/json_writer.c',
+  '../../src/core/render.c',
+  '../../src/core/cli.c',
 ]
 
 unit_test_inc = include_directories('.', 'common', '../../src', '../../traceroute')

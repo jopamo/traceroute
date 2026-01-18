@@ -17,6 +17,9 @@ int main(int argc, char** argv) {
     register_test_rtt();
     register_test_scheduler();
     register_test_dns_cache();
+    register_test_json_writer();
+    register_test_render();
+    register_test_cli();
 
     printf("All unit tests passed!\n");
     return 0;
