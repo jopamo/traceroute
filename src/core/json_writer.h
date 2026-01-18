@@ -16,7 +16,7 @@ int json_write_probe(char* buf,
                      size_t len,
                      int ttl,
                      int probe_idx,
-                     const Probe* pb,
+                     const char* addr_str,
                      double rtt_ms,
                      const char* err_str);
 int json_write_end(char* buf, size_t len);

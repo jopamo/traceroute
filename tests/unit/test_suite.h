@@ -13,5 +13,8 @@ void register_test_flow(void);
 void register_test_rtt(void);
 void register_test_scheduler(void);
 void register_test_dns_cache(void);
+void register_test_json_writer(void);
+void register_test_render(void);
+void register_test_cli(void);
 
 #endif /* TEST_UNIT_TEST_SUITE_H */
