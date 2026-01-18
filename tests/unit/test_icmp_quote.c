@@ -138,6 +138,70 @@ void test_icmp_quote_bounds_checks_no_overread(void) {
     ASSERT_ERR_CODE(parse_icmp_quote(buf, 24, 0, &out), EINVAL);
 }
 
+void test_icmp_quote_fixture_ipv4_time_exceeded(void) {
+    unsigned char buf[128];
+    int len = hex_decode(FIXTURE_IPV4_ICMP_TIME_EXCEEDED, buf, sizeof(buf));
+    ASSERT_OK(len);
+
+    ICMPPacket icmp;
+    ASSERT_OK(parse_icmp(buf, len, &icmp));
+    ASSERT_EQ_INT(icmp.hdr->type, ICMP_TIME_EXCEEDED);
+
+    QuotedPacket quoted;
+    ASSERT_OK(parse_icmp_quote(icmp.payload, icmp.payload_len, 0, &quoted));
+    ASSERT_EQ_INT(quoted.is_ipv6, 0);
+    ASSERT_EQ_INT(quoted.transport_proto, IPPROTO_UDP);
+    ASSERT_EQ_INT(ntohs(quoted.transport.udp.hdr->dest), 33434);
+}
+
+void test_icmp_quote_fixture_ipv4_dest_unreach(void) {
+    unsigned char buf[128];
+    int len = hex_decode(FIXTURE_IPV4_ICMP_DEST_UNREACH, buf, sizeof(buf));
+    ASSERT_OK(len);
+
+    ICMPPacket icmp;
+    ASSERT_OK(parse_icmp(buf, len, &icmp));
+    ASSERT_EQ_INT(icmp.hdr->type, ICMP_DEST_UNREACH);
+    ASSERT_EQ_INT(icmp.hdr->code, ICMP_PORT_UNREACH);
+
+    QuotedPacket quoted;
+    ASSERT_OK(parse_icmp_quote(icmp.payload, icmp.payload_len, 0, &quoted));
+    ASSERT_EQ_INT(quoted.is_ipv6, 0);
+    ASSERT_EQ_INT(quoted.transport_proto, IPPROTO_UDP);
+    ASSERT_EQ_INT(ntohs(quoted.transport.udp.hdr->dest), 33434);
+}
+
+void test_icmp_quote_fixture_ipv6_time_exceeded(void) {
+    unsigned char buf[128];
+    int len = hex_decode(FIXTURE_IPV6_ICMPV6_TIME_EXCEEDED, buf, sizeof(buf));
+    ASSERT_OK(len);
+
+    ICMPv6Packet icmp6;
+    ASSERT_OK(parse_icmpv6(buf, len, &icmp6));
+    ASSERT_EQ_INT(icmp6.hdr->icmp6_type, ICMP6_TIME_EXCEEDED);
+
+    QuotedPacket quoted;
+    ASSERT_OK(parse_icmp_quote(icmp6.payload, icmp6.payload_len, 1, &quoted));
+    ASSERT_EQ_INT(quoted.is_ipv6, 1);
+    ASSERT_EQ_INT(quoted.transport_proto, IPPROTO_UDP);
+    ASSERT_EQ_INT(ntohs(quoted.transport.udp.hdr->dest), 33434);
+}
+
+void test_icmp_quote_fixture_tcp(void) {
+    unsigned char buf[128];
+    int len = hex_decode(FIXTURE_IPV4_ICMP_QUOTING_TCP, buf, sizeof(buf));
+    ASSERT_OK(len);
+
+    ICMPPacket icmp;
+    ASSERT_OK(parse_icmp(buf, len, &icmp));
+
+    QuotedPacket quoted;
+    ASSERT_OK(parse_icmp_quote(icmp.payload, icmp.payload_len, 0, &quoted));
+    ASSERT_EQ_INT(quoted.is_ipv6, 0);
+    ASSERT_EQ_INT(quoted.transport_proto, IPPROTO_TCP);
+    ASSERT_EQ_INT(ntohs(quoted.transport.tcp.hdr->dest), 80);
+}
+
 void register_test_icmp_quote(void) {
     test_icmp_quote_extract_ipv4_inner_ip_and_transport();
     test_icmp_quote_extract_ipv6_inner_ip_and_transport();
@@ -146,4 +210,8 @@ void register_test_icmp_quote(void) {
     test_icmp_quote_handles_ipv6_ext_headers_in_inner_packet();
     test_icmp_quote_fragment_inner_packet_behavior_defined();
     test_icmp_quote_bounds_checks_no_overread();
+    test_icmp_quote_fixture_ipv4_time_exceeded();
+    test_icmp_quote_fixture_ipv4_dest_unreach();
+    test_icmp_quote_fixture_ipv6_time_exceeded();
+    test_icmp_quote_fixture_tcp();
 }

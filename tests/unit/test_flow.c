@@ -32,8 +32,18 @@ void test_flowid_stability_given_same_inputs(void) {
     ASSERT_EQ_INT(f0.src_port, f1.src_port);
 }
 
+void test_flowid_ipv6_flowlabel_rotation_optional(void) {
+    FlowIdentity f0, f1;
+    flow_derive_ipv6(&f0, 0x12345, 0);
+    flow_derive_ipv6(&f1, 0x12345, 1);
+
+    ASSERT_EQ_INT(f0.flow_label, 0x12345);
+    ASSERT_EQ_INT(f1.flow_label, 0x12346);
+}
+
 void register_test_flow(void) {
     test_flowid_udp_ports_derive_unique_per_probe();
     test_flowid_tcp_ports_derive_unique_per_probe();
     test_flowid_stability_given_same_inputs();
+    test_flowid_ipv6_flowlabel_rotation_optional();
 }

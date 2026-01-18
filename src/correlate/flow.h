@@ -18,5 +18,6 @@ typedef struct {
  */
 void flow_derive_udp(FlowIdentity* flow, uint16_t base_dst_port, uint16_t src_port, int probe_idx);
 void flow_derive_tcp(FlowIdentity* flow, uint16_t dst_port, uint16_t base_src_port, int probe_idx);
+void flow_derive_ipv6(FlowIdentity* flow, uint32_t base_label, int probe_idx);
 
 #endif /* TRACEROUTE_CORRELATE_FLOW_H */

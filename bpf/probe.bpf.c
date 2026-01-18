@@ -119,6 +119,7 @@ struct probe_event {
     __u8 icmp_type;
     __u8 icmp_code;
     __u32 ifindex;
+    __u8 is_reply;
 };
 
 struct {
@@ -202,6 +203,21 @@ int BPF_KPROBE(handle_ip_output, struct net* net, struct sock* sk, struct sk_buf
 
     bpf_map_update_elem(&probes, &key, &val, BPF_ANY);
 
+    struct probe_event* ev = bpf_ringbuf_reserve(&events, sizeof(*ev), 0);
+    if (!ev)
+        return 0;
+
+    ev->saddr[0] = ip.saddr;
+    ev->daddr[0] = ip.daddr;
+    ev->sport = bpf_ntohs(udp.source);
+    ev->dport = bpf_ntohs(udp.dest);
+    ev->protocol = IPPROTO_UDP;
+    ev->ttl = ip.ttl;
+    ev->send_time_ns = val.send_time_ns;
+    ev->is_reply = 0;
+
+    bpf_ringbuf_submit(ev, 0);
+
     return 0;
 }
 
@@ -262,6 +278,7 @@ int BPF_KPROBE(handle_icmp_rcv, struct sk_buff* skb) {
     ev->recv_time_ns = recv_time_ns;
     ev->icmp_type = icmp.type;
     ev->icmp_code = icmp.code;
+    ev->is_reply = 1;
 
     bpf_ringbuf_submit(ev, 0);
 

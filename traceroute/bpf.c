@@ -14,6 +14,10 @@ static struct bpf_object* obj = NULL;
 static struct ring_buffer* ringbuf = NULL;
 static int ringbuf_fd = -1;
 
+/*
+ * Note: struct probe_event is shared between BPF and userspace.
+ * We keep it here but could move it to a shared header if more files needed it.
+ */
 struct probe_event {
     uint32_t saddr[4];
     uint32_t daddr[4];
@@ -26,9 +30,13 @@ struct probe_event {
     uint8_t icmp_type;
     uint8_t icmp_code;
     uint32_t ifindex;
+    uint8_t is_reply; /* 1 for reply, 0 for sent probe */
 };
 
-static int handle_event(void* ctx, void* data, size_t data_sz) {
+int bpf_decode_event(void* data, size_t data_sz) {
+    if (data_sz < sizeof(struct probe_event))
+        return -EINVAL;
+
     struct probe_event* ev = data;
     probe* pb;
 
@@ -40,9 +48,16 @@ static int handle_event(void* ctx, void* data, size_t data_sz) {
     if (pb->done)
         return 0;
 
+    if (!ev->is_reply) {
+        /* Probe sent event */
+        pb->send_time = ev->send_time_ns / 1e9;
+        return 0;
+    }
+
+    /* Hop reply event */
     pb->send_time = ev->send_time_ns / 1e9;
     pb->recv_time = ev->recv_time_ns / 1e9;
-    pb->recv_ttl = 0;  // Need to get this from somewhere if we want it
+    pb->recv_ttl = 0;
 
     if (ev->protocol == 17) {  // UDP
         sockaddr_any from = {{0}};
@@ -55,6 +70,10 @@ static int handle_event(void* ctx, void* data, size_t data_sz) {
     probe_done(pb);
 
     return 0;
+}
+
+static int handle_event(void* ctx, void* data, size_t data_sz) {
+    return bpf_decode_event(data, data_sz);
 }
 
 int bpf_init(const char* obj_path) {

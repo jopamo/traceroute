@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
     register_test_parse_transport();
     register_test_parse_icmp();
     register_test_icmp_quote();
+    register_test_match();
     register_test_cmsg();
     register_test_correlator();
     register_test_flow();
@@ -20,6 +21,9 @@ int main(int argc, char** argv) {
     register_test_json_writer();
     register_test_render();
     register_test_cli();
+    register_test_bpf();
+    register_test_extension();
+    register_test_export();
     register_test_property();
 
     printf("All unit tests passed!\n");
