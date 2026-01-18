@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
     register_test_json_writer();
     register_test_render();
     register_test_cli();
+    register_test_property();
 
     printf("All unit tests passed!\n");
     return 0;

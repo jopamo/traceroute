@@ -16,6 +16,7 @@ unit_test_sources = [
   'test_json_writer.c',
   'test_render.c',
   'test_cli.c',
+  'test_property.c',
   '../../src/io/parse.c',
   '../../src/correlate/match.c',
   '../../src/correlate/correlator.c',
