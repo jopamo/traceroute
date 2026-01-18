@@ -68,6 +68,14 @@
         }                                                                                                      \
     } while (0)
 
+#define ASSERT_TRUE(cond)                                                                  \
+    do {                                                                                   \
+        if (!(cond)) {                                                                     \
+            fprintf(stderr, "%s:%d: ASSERT_TRUE failed: %s\n", __FILE__, __LINE__, #cond); \
+            exit(1);                                                                       \
+        }                                                                                  \
+    } while (0)
+
 #define ASSERT_ERR(rc, expected_errno)                                                                                \
     do {                                                                                                              \
         int _rc = (rc);                                                                                               \
