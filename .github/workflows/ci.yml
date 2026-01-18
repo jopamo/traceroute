@@ -19,10 +19,17 @@ jobs:
       - name: Install dependencies
         run: |
           dnf -y update
+          dnf -y install 'dnf-command(copr)'
+          dnf -y copr enable @fedora-llvm-team/llvm-toolset-21
           dnf -y install \
-            clang-21 llvm-21 \
-            meson ninja-build pkgconf-pkg-config \
+            clang llvm \
+            git meson ninja-build pkgconf-pkg-config \
             libbpf-devel libxdp-devel
+
+      - name: Verify LLVM 21
+        run: |
+          clang --version | head -n 1 | grep -E 'clang version 21\\.'
+          llvm-config --version | grep -E '^21\\.'
 
       - name: Configure
         run: |
