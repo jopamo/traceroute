@@ -199,7 +199,7 @@
 
 ## Testing (must-have)
 
-* Golden tests for correlation logic (hand-constructed ICMP payloads)
+* [x] Golden tests for correlation logic (hand-constructed ICMP payloads)
 * Integration tests with network namespaces + veth + netem (delay/loss/reorder)
 * IPv4 + IPv6 test matrix
 * Stress tests: large TTL ranges, high probe rates, partial failures

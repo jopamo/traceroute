@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
 #include <sys/time.h>
 #include <time.h>
 #include <linux/types.h>
@@ -137,6 +139,51 @@ int net_recv_packet(int fd, int check_err_queue, PacketResult* result) {
                 // But recvmsg msg_name should also contain the offender?
                 // "The msg_name member... contains the address of the network entity that caused the error"
                 // So result->sender is already correct.
+
+                // Extract original probe identity from payload (buf)
+                // buf contains the original packet that caused the error (IP + Transport)
+                if (n > 0) {
+                    uint8_t version = (*(uint8_t*)buf) >> 4;
+                    uint8_t proto = 0;
+                    void* transport_header = NULL;
+                    int header_len = 0;
+
+                    if (version == 4 && n >= (int)sizeof(struct iphdr)) {
+                        struct iphdr* ip = (struct iphdr*)buf;
+                        proto = ip->protocol;
+                        header_len = ip->ihl * 4;
+                        if (n >= header_len) {
+                            transport_header = buf + header_len;
+                            result->original_req.ttl = ip->ttl;
+                        }
+                    }
+                    else if (version == 6 && n >= (int)sizeof(struct ip6_hdr)) {
+                        struct ip6_hdr* ip6 = (struct ip6_hdr*)buf;
+                        proto = ip6->ip6_nxt;
+                        header_len = sizeof(struct ip6_hdr);
+                        // NOTE: Proper IPv6 extension header skipping is not yet implemented
+                        // We assume the next header is the transport header for now (MVP)
+                        transport_header = buf + header_len;
+                        result->original_req.ttl = ip6->ip6_hlim;
+                    }
+
+                    if (transport_header) {
+                        result->original_req.protocol = proto;
+                        int remaining = n - header_len;
+
+                        if (proto == IPPROTO_UDP && remaining >= (int)sizeof(struct udphdr)) {
+                            struct udphdr* udp = (struct udphdr*)transport_header;
+                            result->original_req.src_port = ntohs(udp->source);
+                            result->original_req.dst_port = ntohs(udp->dest);
+                        }
+                        else if (proto == IPPROTO_TCP && remaining >= (int)sizeof(struct tcphdr)) {
+                            struct tcphdr* tcp = (struct tcphdr*)transport_header;
+                            result->original_req.src_port = ntohs(tcp->source);
+                            result->original_req.dst_port = ntohs(tcp->dest);
+                            result->original_req.sequence = ntohl(tcp->seq);
+                        }
+                    }
+                }
             }
         }
     }
