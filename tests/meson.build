@@ -32,3 +32,5 @@ test_correlation = executable('test_correlation',
 
 
 test('correlation_test', test_correlation)
+
+subdir('unit')
