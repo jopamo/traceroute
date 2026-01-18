@@ -6,6 +6,8 @@
     See COPYING for the status of this software.
 */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -14,6 +16,10 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <poll.h>
+#include <sched.h>
+#ifndef CLONE_NEWNET
+#define CLONE_NEWNET 0x40000000
+#endif
 #include <netinet/icmp6.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/in.h>
@@ -24,6 +30,7 @@
 #include <time.h>
 #include <linux/types.h>
 #include <linux/errqueue.h>
+#include <linux/net_tstamp.h>
 
 /*  XXX: Remove this when things will be defined properly in netinet/ ...  */
 #include "flowlabel.h"
@@ -65,6 +72,7 @@
 #define MAX_GATEWAYS_4 8
 #define MAX_GATEWAYS_6 127
 #define DEF_HOPS 30
+#define MAX_SIM_PROBES 1024
 #define DEF_SIM_PROBES 16 /*  including several hops   */
 #define DEF_NUM_PROBES 3
 #define DEF_WAIT_SECS 5.0
@@ -112,6 +120,7 @@ static int noroute = 0;
 static unsigned int fwmark = 0;
 static int packet_len = -1;
 static double wait_secs = DEF_WAIT_SECS;
+static double deadline = 0;
 static double here_factor = DEF_HERE_FACTOR;
 static double near_factor = DEF_NEAR_FACTOR;
 static double send_secs = DEF_SEND_SECS;
@@ -132,6 +141,8 @@ static sockaddr_any src_addr = {
 };
 static unsigned int src_port = 0;
 
+static int auto_fallback = 0;
+static char* netns = NULL;
 static const char* module = "default";
 static const tr_module* ops = NULL;
 
@@ -144,6 +155,22 @@ static int af = 0;
 
 probe* probes = NULL;
 static unsigned int num_probes = 0;
+
+typedef enum { TS_USERSPACE = 0, TS_KERNEL_SW, TS_KERNEL_HW } ts_mode_t;
+
+static ts_mode_t ts_mode = TS_KERNEL_SW; /* Default to kernel-sw as it was effectively the default */
+
+static int set_ts_mode(CLIF_option* optn, char* arg) {
+    if (!strcmp(arg, "userspace"))
+        ts_mode = TS_USERSPACE;
+    else if (!strcmp(arg, "kernel-sw") || !strcmp(arg, "sw"))
+        ts_mode = TS_KERNEL_SW;
+    else if (!strcmp(arg, "kernel-hw") || !strcmp(arg, "hw"))
+        ts_mode = TS_KERNEL_HW;
+    else
+        return -1;
+    return 0;
+}
 
 static void ex_error(const char* format, ...) {
     va_list ap;
@@ -550,6 +577,10 @@ static CLIF_option option_list[] = {
      "Specify a network interface "
      "to operate with",
      CLIF_set_string, &device, 0, 0},
+    {0, "netns", "path",
+     "Switch to the network namespace specified by %s "
+     "before starting",
+     CLIF_set_string, &netns, 0, 0},
     {"m", "max-hops", "max_ttl",
      "Set the max number of hops (max TTL "
      "to be reached). Default is " _TEXT(DEF_HOPS),
@@ -584,6 +615,18 @@ static CLIF_option option_list[] = {
                                                                  DEF_WAIT_SECS) ") seconds "
                                                                                 "(float point values allowed too)",
      set_wait_specs, 0, 0, 0},
+    {0, "deadline", "seconds",
+     "Set the overall deadline for the whole traceroute "
+     "in seconds (float point values allowed too). "
+     "If the deadline is reached, the traceroute "
+     "stops immediately",
+     CLIF_set_double, &deadline, 0, 0},
+    {0, "ts", "MODE",
+     "Set timestamping MODE (userspace, kernel-sw, kernel-hw). "
+     "Default is kernel-sw",
+     set_ts_mode, 0, 0, 0},
+    {0, "auto-fallback", 0, "Automatically switch to TCP SYN probes if UDP is filtered", CLIF_set_flag, &auto_fallback,
+     0, 0},
     {"q", "queries", "nqueries",
      "Set the number of probes per each hop. "
      "Default is " _TEXT(DEF_NUM_PROBES),
@@ -671,8 +714,21 @@ int main(int argc, char* argv[]) {
 
     check_progname(argv[0]);
 
-    if (CLIF_parse(argc, argv, option_list, arg_list, CLIF_MAY_JOIN_ARG | CLIF_HELP_EMPTY) < 0)
+    if (CLIF_parse(argc, argv, option_list, arg_list, CLIF_MAY_JOIN_ARG | CLIF_MAY_NOEQUAL | CLIF_HELP_EMPTY) < 0)
         exit(2);
+
+    if (netns) {
+        int fd = open(netns, O_RDONLY);
+        if (fd < 0) {
+            fprintf(stderr, "open %s: %s\n", netns, strerror(errno));
+            exit(2);
+        }
+        if (setns(fd, CLONE_NEWNET) < 0) {
+            fprintf(stderr, "setns %s: %s\n", netns, strerror(errno));
+            exit(2);
+        }
+        close(fd);
+    }
 
     ops = tr_get_module(module);
     if (!ops)
@@ -684,6 +740,8 @@ int main(int argc, char* argv[]) {
         ex_error("max hops cannot be more than " _TEXT(MAX_HOPS));
     if (!probes_per_hop || probes_per_hop > MAX_PROBES)
         ex_error("no more than " _TEXT(MAX_PROBES) " probes per hop");
+    if (sim_probes > MAX_SIM_PROBES)
+        ex_error("sim-queries cannot be more than " _TEXT(MAX_SIM_PROBES));
     if (wait_secs < 0 || here_factor < 0 || near_factor < 0)
         ex_error("bad wait specifications `%g,%g,%g' used", wait_secs, here_factor, near_factor);
     if (packet_len > MAX_PACKET_LEN)
@@ -903,126 +961,11 @@ static double get_timeout(probe* pb) {
 /*	Check  expiration  stuff	*/
 
 static void check_expired(probe* pb) {
-    int idx = (pb - probes);
-    probe *p, *endp = probes + num_probes;
-    probe *fp = NULL, *pfp = NULL;
-
-    if (!pb->done) /*  an ops method still not release it  */
-        return;
-
-    /*  check all the previous in the same hop   */
-    for (p = &probes[idx - (idx % probes_per_hop)]; p < pb; p++) {
-        if (!p->done || /*  too early to decide something  */
-            !p->final   /*  already ttl-exceeded in the same hop  */
-        )
-            return;
-
-        pfp = p; /*  some of the previous probes is final   */
-    }
-
-    /*  check forward all the sent probes   */
-    for (p = pb + 1; p < endp && p->send_time; p++) {
-        if (p->done) {     /*  some next probe already done...  */
-            if (!p->final) /*  ...was ttl-exceeded. OK, we are expired.  */
-                return;
-            else {
-                fp = p;
-                break;
-            }
-        }
-    }
-
-    if (!fp) /*  no any final probe found. Assume expired.   */
-        return;
-
-    /*  Well. There is a situation "*(this) * * * * ... * * final"
-       We cannot guarantee that "final" is in its right place.
-       We've sent "sim_probes" simultaneously, and the final hop
-       can drop some of them and answer only for latest ones.
-       If we can detect/assume that it so, then just put "final"
-       to the (pseudo-expired) "this" place.
-    */
-
-    /*  It seems that the case of "answers for latest ones only"
-       occurs mostly with icmp_unreach error answers ("!H" etc.).
-       Icmp_echoreply, tcp_reset and even icmp_port_unreach looks
-       like going in the right order.
-    */
-    if (!fp->err_str[0]) /*  not an icmp_unreach error report...  */
-        return;
-
-    if (pfp || (idx % probes_per_hop) + (fp - pb) < probes_per_hop) {
-        /*  Either some previous (pfp) or some next probe
-            in this hop is final. It means that the whole hop is final.
-            Do the replace (it also causes further "final"s to be shifted
-            here too).
-        */
-        goto replace_by_final;
-    }
-
-    /*  If the final probe is an icmp_unreachable report
-        (either in a case of some error, like "!H", or just port_unreach),
-        it could follow the "time-exceed" report from the *same* hop.
-    */
-    for (p = pb - 1; p >= probes; p--) {
-        if (equal_addr(&p->res, &fp->res)) {
-            /*  ...Yes. Put "final" to the "this" place.  */
-            goto replace_by_final;
-        }
-    }
-
-    if (fp->recv_ttl) {
-        /*  Consider the ttl value of the report packet and guess where
-            the "final" should be. If it seems that it should be
-            in the same hop as "this", then do replace.
-        */
-        int back_hops, ttl;
-
-        /*  We assume that the reporting one has an initial ttl value
-            of either 64, or 128, or 255. It is most widely used
-            in the modern routers and computers.
-            The idea comes from tracepath(1) routine.
-        */
-        back_hops = ttl2hops(fp->recv_ttl);
-
-        /*  It is possible that the back path differs from the forward
-            and therefore has different number of hops. To minimize
-            such an influence, get the nearest previous time-exceeded
-            probe and compare with it.
-        */
-        for (p = pb - 1; p >= probes; p--) {
-            if (p->done && !p->final && p->recv_ttl) {
-                int hops = ttl2hops(p->recv_ttl);
-
-                if (hops < back_hops) {
-                    ttl = (p - probes) / probes_per_hop + 1;
-                    back_hops = (back_hops - hops) + ttl;
-                    break;
-                }
-            }
-        }
-
-        ttl = idx / probes_per_hop + 1;
-        if (back_hops == ttl)
-            /*  Yes! It seems that "final" should be at "this" place   */
-            goto replace_by_final;
-        else if (back_hops < ttl)
-            /*  Hmmm... Assume better to replace here too...  */
-            goto replace_by_final;
-    }
-
-    /*  No idea what to do. Assume expired.  */
-
-    return;
-
-replace_by_final:
-
-    *pb = *fp;
-
-    memset(fp, 0, sizeof(*fp));
-    /*  block extra re-send  */
-    fp->send_time = 1.;
-
+    /*
+     * Correctness beats cleverness: never “guess” a hop; always report
+     * “unknown/no reply” explicitly.
+     * We no longer try to pull back "final" responses from later probes or hops.
+     */
     return;
 }
 
@@ -1062,6 +1005,8 @@ static void do_it(void) {
     unsigned int start = (first_hop - 1) * probes_per_hop;
     unsigned int end = num_probes;
     double last_send = 0;
+    double start_time = get_time();
+    int consecutive_losses = 0;
 
     tr_report_header(dst_name, &dst_addr, max_hops, header_len + data_len);
 
@@ -1069,6 +1014,11 @@ static void do_it(void) {
         unsigned int n, num = 0;
         double next_time = 0;
         double now_time = get_time();
+
+        if (deadline > 0 && now_time - start_time > deadline) {
+            /* Deadline reached - terminate immediately */
+            break;
+        }
 
         for (n = start; n < end; n++) {
             probe* pb = &probes[n];
@@ -1090,6 +1040,35 @@ static void do_it(void) {
                 if (n == start) { /*  can print it now   */
                     tr_report_probe(pb);
                     start++;
+
+                    if (start % probes_per_hop == 0) {
+                        /* Check if the whole hop failed */
+                        int hop_failed = 1;
+                        unsigned int i;
+                        for (i = start - probes_per_hop; i < start; i++) {
+                            if (probes[i].res.sa.sa_family) {
+                                hop_failed = 0;
+                                break;
+                            }
+                        }
+
+                        if (hop_failed)
+                            consecutive_losses++;
+                        else
+                            consecutive_losses = 0;
+
+                        if (auto_fallback && consecutive_losses >= 3 && strcmp(ops->name, "tcp") != 0) {
+                            const tr_module* next_ops = tr_get_module("tcp");
+                            if (next_ops) {
+                                size_t dummy_len = data_len;
+                                if (next_ops->init(&dst_addr, 0, &dummy_len) == 0) {
+                                    ops = next_ops;
+                                    if (!quiet)
+                                        printf("\n[Fallback to TCP SYN probes at hop %u]", start / probes_per_hop + 1);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (pb->final)
@@ -1130,7 +1109,16 @@ static void do_it(void) {
         }
 
         if (next_time) {
-            double timeout = next_time - get_time();
+            double now = get_time();
+            double timeout = next_time - now;
+
+            if (deadline > 0) {
+                double remaining = deadline - (now - start_time);
+                if (remaining < 0)
+                    remaining = 0;
+                if (remaining < timeout)
+                    timeout = remaining;
+            }
 
             if (timeout < 0)
                 timeout = 0;
@@ -1438,6 +1426,16 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
 
                 recv_time = tv->tv_sec + tv->tv_usec / 1000000.;
             }
+            else if (cm->cmsg_type == SCM_TIMESTAMPING) {
+                struct timespec* ts = (struct timespec*)ptr;
+                /* ts[0] is software, ts[1] is transformed hardware, ts[2] is raw hardware */
+                if (ts_mode == TS_KERNEL_HW && (ts[2].tv_sec || ts[2].tv_nsec)) {
+                    recv_time = ts[2].tv_sec + ts[2].tv_nsec / 1000000000.;
+                }
+                else {
+                    recv_time = ts[0].tv_sec + ts[0].tv_nsec / 1000000000.;
+                }
+            }
         }
         else if (cm->cmsg_level == SOL_IP) {
             if (cm->cmsg_type == IP_TTL)
@@ -1445,7 +1443,8 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
             else if (cm->cmsg_type == IP_RECVERR) {
                 ee = (struct sock_extended_err*)ptr;
 
-                if (ee->ee_origin != SO_EE_ORIGIN_ICMP && ee->ee_origin != SO_EE_ORIGIN_LOCAL)
+                if (ee->ee_origin != SO_EE_ORIGIN_ICMP && ee->ee_origin != SO_EE_ORIGIN_LOCAL &&
+                    ee->ee_origin != SO_EE_ORIGIN_TIMESTAMPING)
                     return;
 
                 /*  dgram icmp sockets might return extra things...  */
@@ -1460,7 +1459,8 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
             else if (cm->cmsg_type == IPV6_RECVERR) {
                 ee = (struct sock_extended_err*)ptr;
 
-                if (ee->ee_origin != SO_EE_ORIGIN_ICMP6 && ee->ee_origin != SO_EE_ORIGIN_LOCAL)
+                if (ee->ee_origin != SO_EE_ORIGIN_ICMP6 && ee->ee_origin != SO_EE_ORIGIN_LOCAL &&
+                    ee->ee_origin != SO_EE_ORIGIN_TIMESTAMPING)
                     return;
             }
         }
@@ -1476,7 +1476,12 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
 
     pb->recv_ttl = recv_ttl;
 
-    if (ee && ee->ee_origin != SO_EE_ORIGIN_LOCAL) { /*  icmp or icmp6   */
+    if (ee && ee->ee_origin == SO_EE_ORIGIN_TIMESTAMPING) {
+        pb->send_time = recv_time;
+        return;
+    }
+
+    if (ee && (ee->ee_origin == SO_EE_ORIGIN_ICMP || ee->ee_origin == SO_EE_ORIGIN_ICMP6)) {
         memcpy(&pb->res, SO_EE_OFFENDER(ee), sizeof(pb->res));
         parse_icmp_res(pb, ee->ee_type, ee->ee_code, ee->ee_info);
     }
@@ -1555,9 +1560,26 @@ void bind_socket(int sk) {
 
 void use_timestamp(int sk) {
     int n = 1;
+    int flags;
 
-    if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPNS, &n, sizeof(n)) < 0)
-        error("setsockopt SO_TIMESTAMPNS");
+    if (ts_mode == TS_USERSPACE)
+        return;
+
+    if (ts_mode == TS_KERNEL_SW) {
+        flags = SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE;
+        if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPING, &flags, sizeof(flags)) < 0) {
+            /*  fallback to SO_TIMESTAMPNS if SO_TIMESTAMPING not supported   */
+            if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPNS, &n, sizeof(n)) < 0)
+                setsockopt(sk, SOL_SOCKET, SO_TIMESTAMP, &n, sizeof(n));
+        }
+    }
+    else if (ts_mode == TS_KERNEL_HW) {
+        flags = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE | SOF_TIMESTAMPING_RX_SOFTWARE |
+                SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_TX_SOFTWARE;
+        if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPING, &flags, sizeof(flags)) < 0) {
+            error("setsockopt SO_TIMESTAMPING (kernel-hw)");
+        }
+    }
 }
 
 void use_recv_ttl(int sk) {

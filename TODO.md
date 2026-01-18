@@ -82,13 +82,13 @@
 
 ### P0.3 Baseline correctness + guardrails
 
-* Hard cap on in-flight probes
-* Timeouts per hop and overall deadline
-* “No reply” is explicit, not inferred
+* [x] Hard cap on in-flight probes
+* [x] Timeouts per hop and overall deadline
+* [x] “No reply” is explicit, not inferred
 * **Acceptance**
 
-  * Deterministic behavior under loss (`tc netem loss`)
-  * No unbounded memory growth on unreachable targets
+  * [x] Deterministic behavior under loss (`tc netem loss`)
+  * [x] No unbounded memory growth on unreachable targets
 
 ---
 
@@ -96,33 +96,33 @@
 
 ### P1.1 Better timestamping (less jitter, better RTT)
 
-* Support `SO_TIMESTAMPING_*` / “NEW” variants when available ([Kernel Documentation][2])
-* Provide timestamp modes:
+* [x] Support `SO_TIMESTAMPING_*` / “NEW” variants when available ([Kernel Documentation][2])
+* [x] Provide timestamp modes:
 
-  * `--ts userspace` (default)
-  * `--ts kernel-sw`
-  * `--ts kernel-hw` (if NIC/driver supports)
+  * [x] `--ts userspace` (default)
+  * [x] `--ts kernel-sw`
+  * [x] `--ts kernel-hw` (if NIC/driver supports)
 * **Acceptance**
 
-  * RTT variance decreases on loaded systems in kernel timestamp modes
+  * [x] RTT variance decreases on loaded systems in kernel timestamp modes
 
 ### P1.2 Protocol matrix (UDP + ICMP + TCP)
 
-* Add ICMP echo mode (may require CAP_NET_RAW)
-* Add TCP SYN mode (useful when UDP/ICMP filtered)
-* Auto fallback: UDP → TCP when repeated filtering suspected
+* [x] Add ICMP echo mode (may require CAP_NET_RAW)
+* [x] Add TCP SYN mode (useful when UDP/ICMP filtered)
+* [x] Auto fallback: UDP → TCP when repeated filtering suspected
 * **Acceptance**
 
-  * Same correlation engine works for at least UDP and TCP
-  * Clear warning when elevated caps are required
+  * [x] Same correlation engine works for at least UDP and TCP
+  * [x] Clear warning when elevated caps are required
 
 ### P1.3 Netns / VRF awareness
 
-* `--netns /proc/<pid>/ns/net` support via `setns()`
-* `--iface` / bind-to-device support for VRF-like setups
+* [x] `--netns /proc/<pid>/ns/net` support via `setns()`
+* [x] `--iface` / bind-to-device support for VRF-like setups
 * **Acceptance**
 
-  * Can trace from inside a container netns without hacks
+  * [x] Can trace from inside a container netns without hacks
 
 ---
 
