@@ -45,7 +45,7 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
         error_or_perm("socket");
 
     /*  icmp_sk not need full tune_socket() here, just a receiving one  */
-    bind_socket(icmp_sk);
+    bind_socket(icmp_sk, NULL);
     use_timestamp(icmp_sk);
     use_recv_ttl(icmp_sk);
 
@@ -64,7 +64,7 @@ static void tcp_send_probe(probe* pb, int ttl) {
     if (sk < 0)
         error("socket");
 
-    tune_socket(sk); /*  common stuff   */
+    tune_socket(sk, pb); /*  common stuff   */
 
     set_ttl(sk, ttl);
 

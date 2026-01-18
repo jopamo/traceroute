@@ -287,7 +287,7 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
     if (raw_sk < 0)
         error_or_perm("socket");
 
-    tune_socket(raw_sk); /*  including bind, if any   */
+    tune_socket(raw_sk, NULL); /*  including bind, if any   */
 
     if (connect(raw_sk, &dest_addr.sa, sizeof(dest_addr)) < 0)
         error("connect");
@@ -313,7 +313,7 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
         raw_sk = socket(af, SOCK_RAW, IPPROTO_TCP);
         if (raw_sk < 0)
             error("socket");
-        tune_socket(raw_sk);
+        tune_socket(raw_sk, NULL);
         /*  but do not connect it...  */
     }
 
@@ -480,7 +480,7 @@ static void tcp_send_probe(probe* pb, int ttl) {
     if (reuse && setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
         error("setsockopt SO_REUSEADDR");
 
-    bind_socket(sk);
+    bind_socket(sk, pb);
 
     if (getsockname(sk, &addr.sa, &len) < 0)
         error("getsockname");

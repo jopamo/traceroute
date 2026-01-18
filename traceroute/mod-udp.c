@@ -116,7 +116,7 @@ static void udp_send_probe(probe* pb, int ttl) {
     if (sk < 0)
         error("socket");
 
-    tune_socket(sk); /*  common stuff   */
+    tune_socket(sk, pb); /*  common stuff   */
 
     if (coverage)
         set_coverage(sk); /*  udplite case   */
