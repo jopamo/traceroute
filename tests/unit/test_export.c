@@ -15,6 +15,7 @@ static void start_capture(void) {
     fflush(stdout);
     old_stdout = stdout;
     stdout = tmpfile();
+    ASSERT_TRUE(stdout != NULL);
 }
 
 static void stop_capture(void) {
@@ -34,8 +35,8 @@ void test_export_jsonl_header(void) {
     tr_export_jsonl_header("example.com", &dst, 30, 60);
     stop_capture();
 
-    ASSERT_OK(strstr(capture_buf, "\"type\":\"header\"") != NULL);
-    ASSERT_OK(strstr(capture_buf, "\"dst_name\":\"example.com\"") != NULL);
+    ASSERT_TRUE(strstr(capture_buf, "\"type\":\"header\"") != NULL);
+    ASSERT_TRUE(strstr(capture_buf, "\"dst_name\":\"example.com\"") != NULL);
 }
 
 void test_export_jsonl_probe(void) {
@@ -48,8 +49,8 @@ void test_export_jsonl_probe(void) {
     tr_export_jsonl_probe(&probes[0]);
     stop_capture();
 
-    ASSERT_OK(strstr(capture_buf, "\"type\":\"probe\"") != NULL);
-    ASSERT_OK(strstr(capture_buf, "\"rtt_ms\":5.0") != NULL);
+    ASSERT_TRUE(strstr(capture_buf, "\"type\":\"probe\"") != NULL);
+    ASSERT_TRUE(strstr(capture_buf, "\"rtt_ms\":5.0") != NULL);
     free(probes);
     probes = NULL;
 }
