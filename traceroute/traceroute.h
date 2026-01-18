@@ -114,6 +114,10 @@ void bpf_poll(int fd, int revents);
 void bpf_print_histograms(void);
 void bpf_cleanup(void);
 
+int xdp_init(const char* ifname, const char* obj_path);
+void xdp_poll(int fd, int revents);
+void xdp_cleanup(void);
+
 #define TR_MODULE(MOD)                                           \
     static void __init_##MOD(void) __attribute__((constructor)); \
     static void __init_##MOD(void) {                             \

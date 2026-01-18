@@ -18,6 +18,7 @@ traceroute_src = files(
   'random.c',
   'time.c',
   'traceroute.c',
+  'xdp.c',
 )
 
 executable(
@@ -27,6 +28,7 @@ executable(
   dependencies: [
     libsupp_dep,
     libbpf_dep,
+    libxdp_dep,
     m_dep,
   ],
   install: true,

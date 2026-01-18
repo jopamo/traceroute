@@ -20,12 +20,36 @@ intermediate gateways.
 - AS path lookups, ICMP extensions (including MPLS), and path MTU discovery.
 - Command-line compatibility with the original traceroute.
 
+## Modern Features
+
+- **Unprivileged by default**: Prefer UDP + error queue correlation (tracepath-style) for root-less operation.
+- **Structured Output**: JSONL streaming output via `--jsonl` for easy integration with other tools.
+- **High Precision**: Kernel-level timestamping (`SO_TIMESTAMPING`) for accurate RTT measurements.
+- **eBPF Acceleration**: Optional in-kernel correlation and telemetry via eBPF kprobes.
+- **AF_XDP Fast Path**: High-rate probing support using AF_XDP for massive trace operations.
+- **Deterministic Correlation**: Reliable matching of replies even under heavy packet reordering.
+
 ## Build
 
 ```sh
 meson setup build
 meson compile -C build
-sudo meson install -C build
+```
+
+## Usage
+
+```sh
+# Basic unprivileged trace
+traceroute 8.8.8.8
+
+# JSONL output for scripting
+traceroute --jsonl 8.8.8.8
+
+# eBPF accelerated mode
+traceroute --bpf on 8.8.8.8
+
+# High-rate AF_XDP mode (requires CAP_NET_RAW and CAP_BPF)
+traceroute -i eth0 --xdp 8.8.8.8
 ```
 
 ## Credits

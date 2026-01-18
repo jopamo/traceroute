@@ -104,6 +104,7 @@ int mock_clock_gettime(clockid_t clk_id, struct timespec* tp) {
 #define clock_gettime mock_clock_gettime
 
 // Include the source files directly
+#include "../src/correlate/match.c"
 #include "../src/io/net.c"
 
 int main() {
@@ -155,5 +156,25 @@ int main() {
     }
 
     printf("PASS: Correlation info extracted successfully\n");
+
+    // Test 2: Match verification
+    Probe p;
+    memset(&p, 0, sizeof(p));
+    p.id.protocol = IPPROTO_UDP;
+    p.id.src_port = 12345;
+    p.id.dst_port = 33434;
+
+    if (correlate_match(&res, &p) != 1) {
+        printf("FAIL: correlate_match failed to match\n");
+        return 1;
+    }
+
+    p.id.src_port = 55555;
+    if (correlate_match(&res, &p) != 0) {
+        printf("FAIL: correlate_match should NOT match different src_port\n");
+        return 1;
+    }
+
+    printf("PASS: correlate_match verified\n");
     return 0;
 }

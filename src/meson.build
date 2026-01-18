@@ -1,6 +1,7 @@
 core_src = files(
   'probe/udp.c',
   'io/net.c',
+  'correlate/match.c',
 )
 
 modern_traceroute_lib = static_library('modern_traceroute',
