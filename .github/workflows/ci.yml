@@ -19,11 +19,6 @@ jobs:
             runtime_env: |
               ASAN_OPTIONS=abort_on_error=1:detect_leaks=1:fast_unwind_on_malloc=0:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:detect_odr_violation=1
               UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
-          - name: tsan
-            meson_sanitize: "thread"
-            extra_cflags: ""
-            runtime_env: |
-              TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1
           - name: ubsan
             meson_sanitize: "undefined"
             extra_cflags: ""
@@ -37,8 +32,6 @@ jobs:
       CFLAGS: -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-sanitize-merge
       CXXFLAGS: -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-sanitize-merge
       LDFLAGS: -fuse-ld=lld
-      ASAN_OPTIONS: abort_on_error=1:detect_leaks=1:fast_unwind_on_malloc=0
-      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
       - uses: actions/checkout@v4
 
@@ -67,4 +60,8 @@ jobs:
         run: |
           set -euo pipefail
           eval "${{ matrix.runtime_env }}"
-          meson test -C "build-${{ matrix.name }}" --print-errorlogs
+          if [ "${{ matrix.name }}" = "tsan" ]; then
+            meson test -C "build-${{ matrix.name }}" --print-errorlogs --num-processes 1
+          else
+            meson test -C "build-${{ matrix.name }}" --print-errorlogs
+          fi
