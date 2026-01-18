@@ -8,9 +8,34 @@ jobs:
   linux-sanitizers:
     runs-on: ubuntu-latest
     container: fedora:rawhide
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: asan-ubsan
+            meson_sanitize: "address,undefined"
+            extra_cflags: "-fsanitize-address-use-after-scope"
+            runtime_env: |
+              ASAN_OPTIONS=abort_on_error=1:detect_leaks=1:fast_unwind_on_malloc=0:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:detect_odr_violation=1
+              UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
+          - name: tsan
+            meson_sanitize: "thread"
+            extra_cflags: ""
+            runtime_env: |
+              TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1
+          - name: ubsan
+            meson_sanitize: "undefined"
+            extra_cflags: ""
+            runtime_env: |
+              UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
     env:
       CC: clang
-      CFLAGS: -O1 -g
+      CXX: clang++
+      LLVM_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer
+      ASAN_SYMBOLIZER_PATH: /usr/bin/llvm-symbolizer
+      CFLAGS: -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-sanitize-merge
+      CXXFLAGS: -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-sanitize-merge
+      LDFLAGS: -fuse-ld=lld
       ASAN_OPTIONS: abort_on_error=1:detect_leaks=1:fast_unwind_on_malloc=0
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
@@ -20,19 +45,25 @@ jobs:
         run: |
           dnf -y update
           dnf -y install \
-            clang llvm \
+            clang llvm lld compiler-rt \
             git meson ninja-build pkgconf-pkg-config \
             libbpf-devel libxdp-devel
 
       - name: Configure
         run: |
-          meson setup build \
-            -D b_sanitize=address,undefined \
+          builddir="build-${{ matrix.name }}"
+          export CFLAGS="${CFLAGS} ${{ matrix.extra_cflags }}"
+          export CXXFLAGS="${CXXFLAGS} ${{ matrix.extra_cflags }}"
+          meson setup "$builddir" \
+            -D b_sanitize="${{ matrix.meson_sanitize }}" \
             -D b_lto=false \
             -D b_ndebug=false
 
       - name: Build
-        run: meson compile -C build
+        run: meson compile -C "build-${{ matrix.name }}"
 
       - name: Test
-        run: meson test -C build --print-errorlogs
+        run: |
+          set -euo pipefail
+          eval "${{ matrix.runtime_env }}"
+          meson test -C "build-${{ matrix.name }}" --print-errorlogs
