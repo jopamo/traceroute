@@ -19,8 +19,6 @@ jobs:
       - name: Install dependencies
         run: |
           dnf -y update
-          dnf -y install 'dnf-command(copr)'
-          dnf -y copr enable @fedora-llvm-team/llvm-toolset-21
           dnf -y install \
             clang llvm \
             git meson ninja-build pkgconf-pkg-config \
