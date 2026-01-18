@@ -74,7 +74,7 @@ static int raw_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
     if (raw_sk < 0)
         error_or_perm("socket");
 
-    tune_socket(raw_sk);
+    tune_socket(raw_sk, NULL);
 
     /*  Don't want to catch packets from another hosts   */
     if (raw_can_connect() && connect(raw_sk, &dest_addr.sa, sizeof(dest_addr)) < 0)

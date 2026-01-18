@@ -130,34 +130,29 @@
 
 ### P2.1 ECMP / multipath exploration
 
-* `--ecmp N` runs N distinct flow identities per TTL
-* Rotate:
-
+* [x] `--ecmp N` runs N distinct flow identities per TTL
+* [x] Rotate:
   * UDP source ports
   * TCP source ports
   * IPv6 flow label (optional)
-* Render as “multiple candidates per hop” (grouped)
+* [x] Render as “multiple candidates per hop” (grouped)
 * **Acceptance**
-
-  * Demonstrably reveals multiple next-hops behind ECMP
+  * [x] Demonstrably reveals multiple next-hops behind ECMP
 
 ### P2.2 Per-hop MTU discovery
 
-* Detect and report “Packet Too Big” / fragmentation-related feedback
-* Emit MTU changes as events
+* [x] Detect and report “Packet Too Big” / fragmentation-related feedback
+* [x] Emit MTU changes as events
 * **Acceptance**
-
-  * Produces actionable MTU drop location with common PMTUD scenarios
+  * [x] Produces actionable MTU drop location with common PMTUD scenarios
 
 ### P2.3 Link-layer / interface metadata (best-effort)
 
-* Attempt to report:
-
+* [x] Attempt to report:
   * egress interface index
   * ingress interface index (when derivable)
 * **Acceptance**
-
-  * Never blocks core output if metadata unavailable
+  * [x] Never blocks core output if metadata unavailable
 
 ---
 

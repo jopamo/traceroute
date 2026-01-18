@@ -99,6 +99,7 @@ static unsigned int first_hop = 1;
 unsigned int max_hops = DEF_HOPS;
 static unsigned int sim_probes = DEF_SIM_PROBES;
 unsigned int probes_per_hop = DEF_NUM_PROBES;
+static unsigned int ecmp = 0;
 
 static char** gateways = NULL;
 static int num_gateways = 0;
@@ -631,6 +632,7 @@ static CLIF_option option_list[] = {
      "Set the number of probes per each hop. "
      "Default is " _TEXT(DEF_NUM_PROBES),
      CLIF_set_uint, &probes_per_hop, 0, 0},
+    {0, "ecmp", "num", "Run %s distinct flow identities per TTL", CLIF_set_uint, &ecmp, 0, 0},
     {"r", 0, 0,
      "Bypass the normal routing and send directly to a host "
      "on an attached network",
@@ -716,6 +718,9 @@ int main(int argc, char* argv[]) {
 
     if (CLIF_parse(argc, argv, option_list, arg_list, CLIF_MAY_JOIN_ARG | CLIF_MAY_NOEQUAL | CLIF_HELP_EMPTY) < 0)
         exit(2);
+
+    if (ecmp > probes_per_hop)
+        probes_per_hop = ecmp;
 
     if (netns) {
         int fd = open(netns, O_RDONLY);
@@ -1132,7 +1137,7 @@ static void do_it(void) {
     return;
 }
 
-void tune_socket(int sk) {
+void tune_socket(int sk, probe* pb) {
     int i = 0;
 
     if (debug) {
@@ -1159,7 +1164,7 @@ void tune_socket(int sk) {
         }
     }
 
-    bind_socket(sk);
+    bind_socket(sk, pb);
 
     if (af == AF_INET) {
         i = dontfrag ? IP_PMTUDISC_PROBE : IP_PMTUDISC_DONT;
@@ -1181,9 +1186,16 @@ void tune_socket(int sk) {
 
         if (flow_label) {
             struct in6_flowlabel_req flr;
+            unsigned int label = flow_label;
+
+            if (ecmp && pb) {
+                unsigned int np = (pb - probes) % probes_per_hop;
+                unsigned int flow_idx = np % ecmp;
+                label += flow_idx;
+            }
 
             memset(&flr, 0, sizeof(flr));
-            flr.flr_label = htonl(flow_label & 0x000fffff);
+            flr.flr_label = htonl(label & 0x000fffff);
             flr.flr_action = IPV6_FL_A_GET;
             flr.flr_flags = IPV6_FL_F_CREATE;
             flr.flr_share = IPV6_FL_S_ANY;
@@ -1259,6 +1271,7 @@ void parse_icmp_res(probe* pb, int type, int code, int info) {
 
                 case ICMP_UNREACH_NEEDFRAG:
                     put_err(pb, "!F-%d", info);
+                    pb->mtu = info;
                     break;
 
                 case ICMP_UNREACH_SRCFAIL:
@@ -1311,8 +1324,10 @@ void parse_icmp_res(probe* pb, int type, int code, int info) {
                     break;
             }
         }
-        else if (type == ICMP6_PACKET_TOO_BIG)
+        else if (type == ICMP6_PACKET_TOO_BIG) {
             put_err(pb, "!F-%d", info);
+            pb->mtu = info;
+        }
         else
             put_err(pb, "!<%u-%u>", type, code);
     }
@@ -1357,6 +1372,8 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
     struct cmsghdr* cm;
     double recv_time = 0;
     int recv_ttl = 0;
+    int ifindex_in = 0;
+    int ifindex_out = 0;
     struct sock_extended_err* ee = NULL;
 
     memset(&msg, 0, sizeof(msg));
@@ -1440,6 +1457,10 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
         else if (cm->cmsg_level == SOL_IP) {
             if (cm->cmsg_type == IP_TTL)
                 recv_ttl = *((int*)ptr);
+            else if (cm->cmsg_type == IP_PKTINFO) {
+                struct in_pktinfo* pkt = (struct in_pktinfo*)ptr;
+                ifindex_in = pkt->ipi_ifindex;
+            }
             else if (cm->cmsg_type == IP_RECVERR) {
                 ee = (struct sock_extended_err*)ptr;
 
@@ -1456,6 +1477,10 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
         else if (cm->cmsg_level == SOL_IPV6) {
             if (cm->cmsg_type == IPV6_HOPLIMIT)
                 recv_ttl = *((int*)ptr);
+            else if (cm->cmsg_type == IPV6_PKTINFO) {
+                struct in6_pktinfo* pkt = (struct in6_pktinfo*)ptr;
+                ifindex_in = pkt->ipi6_ifindex;
+            }
             else if (cm->cmsg_type == IPV6_RECVERR) {
                 ee = (struct sock_extended_err*)ptr;
 
@@ -1475,6 +1500,13 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
     pb->recv_time = recv_time;
 
     pb->recv_ttl = recv_ttl;
+
+    if (ee) {
+        ifindex_out = ee->ee_data;
+    }
+
+    pb->ifindex_in = ifindex_in;
+    pb->ifindex_out = ifindex_out;
 
     if (ee && ee->ee_origin == SO_EE_ORIGIN_TIMESTAMPING) {
         pb->send_time = recv_time;
@@ -1498,6 +1530,7 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
           but fill its `err_str' by the info obtained. Ugly, but easy...
         */
         memset(pb, 0, sizeof(*pb));
+        pb->mtu = ee->ee_info;
         put_err(pb, "F=%d", ee->ee_info);
 
         return;
@@ -1536,7 +1569,7 @@ int equal_addr(const sockaddr_any* a, const sockaddr_any* b) {
     return 0; /*  not reached   */
 }
 
-void bind_socket(int sk) {
+void bind_socket(int sk, probe* pb) {
     sockaddr_any *addr, tmp;
 
     if (device) {
@@ -1551,6 +1584,22 @@ void bind_socket(int sk) {
     }
     else
         addr = &src_addr;
+
+    if (ecmp && pb) {
+        unsigned int np = (pb - probes) % probes_per_hop;
+        unsigned int flow_idx = np % ecmp;
+        uint16_t port = ntohs(addr->sin.sin_port); /* same offset for sin6 */
+
+        if (port || (module && (!strcmp(module, "udp") || !strcmp(module, "tcp") || !strcmp(module, "default")))) {
+            if (!port)
+                port = DEF_START_PORT; /* arbitrary base for rotation if not specified */
+            port += flow_idx;
+            if (addr->sa.sa_family == AF_INET6)
+                addr->sin6.sin6_port = htons(port);
+            else
+                addr->sin.sin_port = htons(port);
+        }
+    }
 
     if (bind(sk, &addr->sa, sizeof(*addr)) < 0)
         error("bind");
@@ -1585,10 +1634,14 @@ void use_timestamp(int sk) {
 void use_recv_ttl(int sk) {
     int n = 1;
 
-    if (af == AF_INET)
+    if (af == AF_INET) {
         setsockopt(sk, SOL_IP, IP_RECVTTL, &n, sizeof(n));
-    else if (af == AF_INET6)
+        setsockopt(sk, SOL_IP, IP_PKTINFO, &n, sizeof(n));
+    }
+    else if (af == AF_INET6) {
         setsockopt(sk, SOL_IPV6, IPV6_RECVHOPLIMIT, &n, sizeof(n));
+        setsockopt(sk, SOL_IPV6, IPV6_RECVPKTINFO, &n, sizeof(n));
+    }
     /*  foo on errors   */
 }
 

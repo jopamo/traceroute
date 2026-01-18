@@ -83,6 +83,17 @@ void tr_export_jsonl_probe(probe* pb) {
         json_escape(pb->err_str);
     }
 
+    if (pb->mtu) {
+        printf(", \"mtu\":%d", pb->mtu);
+    }
+
+    if (pb->ifindex_in) {
+        printf(", \"ifindex_in\":%d", pb->ifindex_in);
+    }
+    if (pb->ifindex_out) {
+        printf(", \"ifindex_out\":%d", pb->ifindex_out);
+    }
+
     if (pb->ext) {
         printf(", \"extensions\":");
         json_escape(pb->ext);

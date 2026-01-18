@@ -24,6 +24,9 @@ struct probe_struct {
     double send_time;
     double recv_time;
     int recv_ttl;
+    int mtu;
+    int ifindex_in;
+    int ifindex_out;
     int sk;
     int seq;
     char* ext;
@@ -59,7 +62,7 @@ void put_err(probe* pb, const char* format, ...) __attribute__((format(printf, 2
 const char* addr2str(const sockaddr_any* addr);
 
 double get_time(void);
-void tune_socket(int sk);
+void tune_socket(int sk, probe* pb);
 void parse_icmp_res(probe* pb, int type, int code, int info);
 void probe_done(probe* pb);
 
@@ -71,7 +74,7 @@ int equal_addr(const sockaddr_any* a, const sockaddr_any* b);
 probe* probe_by_seq(int seq);
 probe* probe_by_sk(int sk);
 
-void bind_socket(int sk);
+void bind_socket(int sk, probe* pb);
 void use_timestamp(int sk);
 void use_recv_ttl(int sk);
 void use_recverr(int sk);

@@ -64,6 +64,16 @@ int main() {
     printf("Probe escaping test:\n");
     tr_export_jsonl_probe(&probes[3]);
 
+    // Test MTU and Interfaces
+    probes[5].res.sa.sa_family = AF_INET;
+    probes[5].send_time = 100.0;
+    probes[5].recv_time = 100.005;
+    probes[5].mtu = 1492;
+    probes[5].ifindex_in = 2;
+    probes[5].ifindex_out = 3;
+    printf("Probe MTU and Interfaces test:\n");
+    tr_export_jsonl_probe(&probes[5]);
+
     // Test End
     printf("End test:\n");
     tr_export_jsonl_end();
