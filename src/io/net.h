@@ -42,4 +42,8 @@ int net_send_probe(int fd, Probe* probe);
 // check_err_queue: 1 to read MSG_ERRQUEUE, 0 for normal
 int net_recv_packet(int fd, int check_err_queue, PacketResult* result);
 
+// Check if IPv6 is supported by the kernel
+// Returns 1 if supported, 0 if not
+int net_check_ipv6_support(void);
+
 #endif  // TRACEROUTE_IO_NET_H

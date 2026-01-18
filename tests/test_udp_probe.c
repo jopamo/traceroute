@@ -14,9 +14,14 @@ static int mock_connect_called = 0;
 static int mock_send_called = 0;
 static int mock_setsockopt_ttl_val = 0;
 static int mock_recverr_enabled = 0;
+static int mock_ipv6_supported = 1;
 
 // Mock implementations
 int mock_socket(int domain, int type, int protocol) {
+    if (domain == AF_INET6 && !mock_ipv6_supported) {
+        errno = EAFNOSUPPORT;
+        return -1;
+    }
     return mock_socket_fd;
 }
 
@@ -159,6 +164,14 @@ int main() {
         return 1;
     }
     printf("PASS: Recv Error\n");
+
+    // Test 5: IPv6 Support Check
+    mock_ipv6_supported = 1;
+    if (net_check_ipv6_support() != 1) {
+        printf("FAIL: net_check_ipv6_support should return 1\n");
+        return 1;
+    }
+    printf("PASS: IPv6 Support Check\n");
 
     probe_cleanup(&p);
     return 0;
