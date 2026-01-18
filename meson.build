@@ -22,4 +22,6 @@ subdir('libsupp')
 subdir('src')
 subdir('bpf')
 subdir('traceroute')
-subdir('tests')
+if get_option('tests')
+  subdir('tests')
+endif
