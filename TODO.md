@@ -62,9 +62,9 @@
 
 ### P0.1 Unprivileged core probing (UDP + error queue)
 
-* Implement UDP probes with TTL stepping
-* Receive ICMP errors via `IP_RECVERR` ancillary data and `MSG_ERRQUEUE` ([man7.org][1])
-* Parse `sock_extended_err` reliably (IPv4 + IPv6 paths)
+* [x] Implement UDP probes with TTL stepping
+* [x] Receive ICMP errors via `IP_RECVERR` ancillary data and `MSG_ERRQUEUE` ([man7.org][1])
+* [x] Parse `sock_extended_err` reliably (IPv4 + IPv6 paths)
 * **Acceptance**
 
   * Works without root on a typical distro (only needs standard socket permissions)
