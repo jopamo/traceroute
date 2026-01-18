@@ -840,8 +840,13 @@ int main(int argc, char* argv[]) {
             ex_error("BPF initialization failed");
     }
 
+    if (device) {
+        xdp_init(device, "xdp_probe.bpf.o");
+    }
+
     do_it();
 
+    xdp_cleanup();
     bpf_cleanup();
 
     return 0;
@@ -1037,6 +1042,7 @@ probe* probe_by_sk(int sk) {
 
 static void poll_callback(int fd, int revents) {
     bpf_poll(fd, revents);
+    xdp_poll(fd, revents);
     ops->recv_probe(fd, revents);
 }
 

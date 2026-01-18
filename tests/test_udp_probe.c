@@ -86,6 +86,7 @@ int mock_clock_gettime(clockid_t clk_id, struct timespec* tp) {
 #define clock_gettime mock_clock_gettime
 
 // Include the source files directly
+#include "../src/correlate/match.c"
 #include "../src/io/net.c"
 #include "../src/probe/udp.c"
 

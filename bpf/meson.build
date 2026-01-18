@@ -1,4 +1,5 @@
 libbpf_dep = dependency('libbpf', required: true)
+libxdp_dep = dependency('libxdp', required: true)
 
 # BPF program compilation
 clang = find_program('clang')
@@ -19,11 +20,20 @@ bpf_gen = generator(
   ]
 )
 
-bpf_object = bpf_gen.process('probe.bpf.c')
+# Simplified version:
+bpf_obj_probe = bpf_gen.process('probe.bpf.c')
+bpf_obj_xdp = bpf_gen.process('xdp_probe.bpf.c')
 
-custom_target('bpf_object_target',
-  input: bpf_object,
+custom_target('bpf_probe_target',
+  input: bpf_obj_probe,
   output: 'probe.bpf.o',
+  command: ['cp', '@INPUT@', '@OUTPUT@'],
+  build_by_default: true,
+)
+
+custom_target('bpf_xdp_target',
+  input: bpf_obj_xdp,
+  output: 'xdp_probe.bpf.o',
   command: ['cp', '@INPUT@', '@OUTPUT@'],
   build_by_default: true,
 )
