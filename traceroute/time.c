@@ -8,19 +8,19 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include "traceroute.h"
 
 /*  Just returns current time as double, with most possible precision...  */
 
 double get_time(void) {
-    struct timeval tv;
+    struct timespec ts;
     double d;
 
-    gettimeofday(&tv, NULL);
+    clock_gettime(CLOCK_REALTIME, &ts);
 
-    d = ((double)tv.tv_usec) / 1000000. + (unsigned long)tv.tv_sec;
+    d = ((double)ts.tv_nsec) / 1000000000. + (unsigned long)ts.tv_sec;
 
     return d;
 }

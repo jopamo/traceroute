@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <poll.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip_icmp.h>
@@ -20,7 +21,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <locale.h>
-#include <sys/utsname.h>
+#include <time.h>
 #include <linux/types.h>
 #include <linux/errqueue.h>
 
@@ -1402,7 +1403,12 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
         void* ptr = CMSG_DATA(cm);
 
         if (cm->cmsg_level == SOL_SOCKET) {
-            if (cm->cmsg_type == SO_TIMESTAMP) {
+            if (cm->cmsg_type == SCM_TIMESTAMPNS) {
+                struct timespec* ts = (struct timespec*)ptr;
+
+                recv_time = ts->tv_sec + ts->tv_nsec / 1000000000.;
+            }
+            else if (cm->cmsg_type == SO_TIMESTAMP) {
                 struct timeval* tv = (struct timeval*)ptr;
 
                 recv_time = tv->tv_sec + tv->tv_usec / 1000000.;
@@ -1525,8 +1531,8 @@ void bind_socket(int sk) {
 void use_timestamp(int sk) {
     int n = 1;
 
-    setsockopt(sk, SOL_SOCKET, SO_TIMESTAMP, &n, sizeof(n));
-    /*  foo on errors...  */
+    if (setsockopt(sk, SOL_SOCKET, SO_TIMESTAMPNS, &n, sizeof(n)) < 0)
+        error("setsockopt SO_TIMESTAMPNS");
 }
 
 void use_recv_ttl(int sk) {
@@ -1582,29 +1588,6 @@ int do_send(int sk, const void* data, size_t len, const sockaddr_any* addr) {
     return res;
 }
 
-/*  There is a bug in the kernel before 2.6.25, which prevents icmp errors
-  to be obtained by MSG_ERRQUEUE for ipv6 connected raw sockets.
-*/
-static int can_connect = -1;
-
-#define VER(A, B, C, D) (((((((A) << 8) | (B)) << 8) | (C)) << 8) | (D))
-
 int raw_can_connect(void) {
-    if (can_connect < 0) {
-        if (af == AF_INET)
-            can_connect = 1;
-        else { /*  AF_INET6   */
-            struct utsname uts;
-            int n;
-            unsigned int a, b, c, d = 0;
-
-            if (uname(&uts) < 0)
-                return 0;
-
-            n = sscanf(uts.release, "%u.%u.%u.%u", &a, &b, &c, &d);
-            can_connect = (n >= 3 && VER(a, b, c, d) >= VER(2, 6, 25, 0));
-        }
-    }
-
-    return can_connect;
+    return 1;
 }
