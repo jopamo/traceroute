@@ -85,10 +85,12 @@ static char version_string[] =
     "\nCopyright (c) 2016  Dmitry Butskoy, "
     "  License: GPL v2 or any later";
 static int debug = 0;
+static int jsonl = 0;
+static int quiet = 0;
 static unsigned int first_hop = 1;
-static unsigned int max_hops = DEF_HOPS;
+unsigned int max_hops = DEF_HOPS;
 static unsigned int sim_probes = DEF_SIM_PROBES;
-static unsigned int probes_per_hop = DEF_NUM_PROBES;
+unsigned int probes_per_hop = DEF_NUM_PROBES;
 
 static char** gateways = NULL;
 static int num_gateways = 0;
@@ -140,7 +142,7 @@ static unsigned int opts_idx = 1; /*  first one reserved...   */
 
 static int af = 0;
 
-static probe* probes = NULL;
+probe* probes = NULL;
 static unsigned int num_probes = 0;
 
 static void ex_error(const char* format, ...) {
@@ -531,6 +533,8 @@ static CLIF_option option_list[] = {
     {"4", 0, 0, "Use IPv4", set_af, (void*)4, 0, CLIF_EXTRA},
     {"6", 0, 0, "Use IPv6", set_af, (void*)6, 0, 0},
     {"d", "debug", 0, "Enable socket level debugging", CLIF_set_flag, &debug, 0, 0},
+    {0, "jsonl", 0, "Use JSONL streaming output", CLIF_set_flag, &jsonl, 0, 0},
+    {0, "quiet", 0, "Do not print human-readable output", CLIF_set_flag, &quiet, 0, 0},
     {"F", "dont-fragment", 0, "Do not fragment packets", CLIF_set_flag, &dontfrag, 0, CLIF_ABBREV},
     {"f", "first", "first_ttl", "Start from the %s hop (instead from 1)", CLIF_set_uint, &first_hop, 0, 0},
     {"g", "gateway", "gate",
@@ -837,6 +841,27 @@ static void print_end(void) {
     printf("\n");
 }
 
+void tr_report_header(const char* dst_name, const sockaddr_any* dst_addr, unsigned int max_hops, size_t packet_len) {
+    if (jsonl)
+        tr_export_jsonl_header(dst_name, dst_addr, max_hops, packet_len);
+    if (!quiet)
+        print_header();
+}
+
+void tr_report_probe(probe* pb) {
+    if (jsonl)
+        tr_export_jsonl_probe(pb);
+    if (!quiet)
+        print_probe(pb);
+}
+
+void tr_report_end(void) {
+    if (jsonl)
+        tr_export_jsonl_end();
+    if (!quiet)
+        print_end();
+}
+
 /*	Compute  timeout  stuff		*/
 
 static double get_timeout(probe* pb) {
@@ -1038,7 +1063,7 @@ static void do_it(void) {
     unsigned int end = num_probes;
     double last_send = 0;
 
-    print_header();
+    tr_report_header(dst_name, &dst_addr, max_hops, header_len + data_len);
 
     while (start < end) {
         unsigned int n, num = 0;
@@ -1063,7 +1088,7 @@ static void do_it(void) {
 
             if (pb->done) {
                 if (n == start) { /*  can print it now   */
-                    print_probe(pb);
+                    tr_report_probe(pb);
                     start++;
                 }
 
@@ -1114,7 +1139,7 @@ static void do_it(void) {
         }
     }
 
-    print_end();
+    tr_report_end();
 
     return;
 }

@@ -93,6 +93,17 @@ uint16_t in_csum(const void* ptr, size_t len);
 void tr_register_module(tr_module* module);
 const tr_module* tr_get_module(const char* name);
 
+void tr_report_header(const char* dst_name, const sockaddr_any* dst_addr, unsigned int max_hops, size_t packet_len);
+void tr_report_probe(probe* pb);
+void tr_report_end(void);
+
+void tr_export_jsonl_header(const char* dst_name,
+                            const sockaddr_any* dst_addr,
+                            unsigned int max_hops,
+                            size_t packet_len);
+void tr_export_jsonl_probe(probe* pb);
+void tr_export_jsonl_end(void);
+
 #define TR_MODULE(MOD)                                           \
     static void __init_##MOD(void) __attribute__((constructor)); \
     static void __init_##MOD(void) {                             \

@@ -73,12 +73,12 @@
 
 ### P0.2 Output engine (human + structured)
 
-* JSONL streaming output (one event per hop/probe)
-* Human renderer consumes the same event stream
+* [x] JSONL streaming output (one event per hop/probe)
+* [x] Human renderer consumes the same event stream
 * **Acceptance**
 
-  * `--jsonl` output is stable schema (versioned)
-  * `--quiet` still emits JSONL while suppressing terminal formatting
+  * [x] `--jsonl` output is stable schema (versioned)
+  * [x] `--quiet` still emits JSONL while suppressing terminal formatting
 
 ### P0.3 Baseline correctness + guardrails
 
