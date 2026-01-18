@@ -4,6 +4,7 @@ m_dep = cc.find_library('m', required: true)
 traceroute_src = files(
   'as_lookups.c',
   'csum.c',
+  'export.c',
   'extension.c',
   'mod-dccp.c',
   'mod-icmp.c',
