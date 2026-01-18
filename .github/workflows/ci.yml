@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux-sanitizers:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    env:
+      CC: clang
+      CFLAGS: -O1 -g
+      ASAN_OPTIONS: abort_on_error=1:detect_leaks=1:fast_unwind_on_malloc=0
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf -y update
+          dnf -y install \
+            clang-21 llvm-21 \
+            meson ninja-build pkgconf-pkg-config \
+            libbpf-devel libxdp-devel
+
+      - name: Configure
+        run: |
+          meson setup build \
+            -D b_sanitize=address,undefined \
+            -D b_lto=false \
+            -D b_ndebug=false
+
+      - name: Build
+        run: meson compile -C build
+
+      - name: Test
+        run: meson test -C build --print-errorlogs
