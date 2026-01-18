@@ -32,5 +32,3 @@ sudo meson install -C build
 
 Written from scratch, influenced by Olaf Kirch's traceroute, Van Jacobson’s
 original implementation, and current BSD variants.
-
-Original author : <Dmitry at Butskoy dot name>.
