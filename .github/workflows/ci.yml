@@ -7,7 +7,7 @@ on:
 jobs:
   linux-sanitizers:
     runs-on: ubuntu-latest
-    container: fedora:latest
+    container: fedora:rawhide
     env:
       CC: clang
       CFLAGS: -O1 -g
