@@ -22,6 +22,9 @@ typedef struct {
     int icmp_code;
     uint32_t icmp_info;
 
+    // Extracted from the error payload
+    ProbeIdentity original_req;
+
     // For local errors
     int error_no;
 } PacketResult;
