@@ -1,6 +1,3 @@
-cc = meson.get_compiler('c')
-sanitize_args = cc.get_supported_arguments(['-fsanitize=address,undefined'])
-
 unit_test_sources = [
   'runner.c',
   'common/fixtures.c',
@@ -47,8 +44,6 @@ unit_test_exe = executable('unit_tests',
   unit_test_sources,
   include_directories: unit_test_inc,
   dependencies: [libbpf_dep, libxdp_dep, libsupp_dep],
-  c_args: sanitize_args,
-  link_args: sanitize_args,
 )
 
 test('unit_tests', unit_test_exe)

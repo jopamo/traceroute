@@ -51,7 +51,8 @@ jobs:
           meson setup "$builddir" \
             -D b_sanitize="${{ matrix.meson_sanitize }}" \
             -D b_lto=false \
-            -D b_ndebug=false
+            -D b_ndebug=false \
+            -D tests=true
 
       - name: Build
         run: meson compile -C "build-${{ matrix.name }}"
