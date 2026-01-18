@@ -71,7 +71,7 @@ const char* get_as_path(const char* query) {
 
     // Send query
     n = snprintf(buf, sizeof(buf), "%s\r\n", query);
-    if (n >= sizeof(buf)) {
+    if (n < 0 || (size_t)n >= sizeof(buf)) {
         fprintf(stderr, "Query buffer overflow\n");
         close(sk);
         return "!!";
@@ -95,7 +95,8 @@ const char* get_as_path(const char* query) {
     rb = ra_buf;
 
     while (fgets(buf, sizeof(buf), fp) != NULL) {
-        if (strncmp(buf, ROUTE_PREFIX, strlen(ROUTE_PREFIX)) == 0 || strncmp(buf, ROUTE6_PREFIX, strlen(ROUTE6_PREFIX)) == 0) {
+        if (strncmp(buf, ROUTE_PREFIX, strlen(ROUTE_PREFIX)) == 0 ||
+            strncmp(buf, ROUTE6_PREFIX, strlen(ROUTE6_PREFIX)) == 0) {
             char* p = strchr(buf, '/');
             if (p) {
                 prefix = strtoul(++p, NULL, 10);

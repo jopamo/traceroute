@@ -47,7 +47,7 @@ static CLIF_option icmp_options[] = {{0, "raw", 0,
                                      CLIF_END_OPTION};
 
 static int icmp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* packet_len_p) {
-    int i;
+    size_t i;
     int af = dest->sa.sa_family;
     int protocol;
 
@@ -223,4 +223,4 @@ static tr_module icmp_ops = {
     .options = icmp_options,
 };
 
-TR_MODULE(icmp_ops);
+TR_MODULE(icmp_ops)

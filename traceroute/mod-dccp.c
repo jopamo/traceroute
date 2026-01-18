@@ -37,7 +37,10 @@ static struct dccp_hdr_ext* dhe = NULL;
 static struct dccp_hdr_request* dhr = NULL;
 static unsigned int service_code = DEF_SERVICE_CODE;
 
-static CLIF_option dccp_options[] = {{0, "service", "NUM", "Set DCCP service code to %s (default is " _TEXT(DEF_SERVICE_CODE) ")", CLIF_set_uint, &service_code, 0, CLIF_ABBREV}, CLIF_END_OPTION};
+static CLIF_option dccp_options[] = {
+    {0, "service", "NUM", "Set DCCP service code to %s (default is " _TEXT(DEF_SERVICE_CODE) ")", CLIF_set_uint,
+     &service_code, 0, CLIF_ABBREV},
+    CLIF_END_OPTION};
 
 static int dccp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* packet_len_p) {
     int af = dest->sa.sa_family;
@@ -263,4 +266,4 @@ static tr_module dccp_ops = {
     .options = dccp_options,
 };
 
-TR_MODULE(dccp_ops);
+TR_MODULE(dccp_ops)

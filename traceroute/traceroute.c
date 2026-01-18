@@ -78,10 +78,11 @@
 
 #define ttl2hops(X) (((X) <= 64 ? 65 : ((X) <= 128 ? 129 : 256)) - (X))
 
-static char version_string[] = "Modern traceroute for Linux, "
-				"version " _TEXT(VERSION)
-				"\nCopyright (c) 2016  Dmitry Butskoy, "
-				"  License: GPL v2 or any later";
+static char version_string[] =
+    "Modern traceroute for Linux, "
+    "version " TRACEROUTE_VERSION
+    "\nCopyright (c) 2016  Dmitry Butskoy, "
+    "  License: GPL v2 or any later";
 static int debug = 0;
 static unsigned int first_hop = 1;
 static unsigned int max_hops = DEF_HOPS;
@@ -264,7 +265,8 @@ static int getaddr(const char* name, sockaddr_any* addr) {
 
         // Convert the v4mapped address to IPv4
         addr->sa.sa_family = AF_INET;
-        addr->sin.sin_addr.s_addr = addr->sin6.sin6_addr.s6_addr32[3];  // Extract IPv4 address from the v4mapped address
+        addr->sin.sin_addr.s_addr =
+            addr->sin6.sin6_addr.s6_addr32[3];  // Extract IPv4 address from the v4mapped address
     }
 
     return 0;  // Success
@@ -559,7 +561,8 @@ static CLIF_option option_list[] = {
      "default is " _TEXT(DEF_START_PORT) "), "
                                          "or initial seq for \"icmp\" (incremented as well, "
                                          "default from 1), or some constant destination port"
-                                         " for other methods (with default of " _TEXT(DEF_TCP_PORT) " for \"tcp\", " _TEXT(DEF_UDP_PORT) " for \"udp\", etc.)",
+                                         " for other methods (with default of " _TEXT(
+                                             DEF_TCP_PORT) " for \"tcp\", " _TEXT(DEF_UDP_PORT) " for \"udp\", etc.)",
      set_port, &dst_port_seq, 0, 0},
     {"t", "tos", "tos",
      "Set the TOS (IPv4 type of service) or TC "
@@ -570,9 +573,11 @@ static CLIF_option option_list[] = {
      "Wait for a probe no more than HERE "
      "(default " _TEXT(DEF_HERE_FACTOR) ") times longer "
                                         "than a response from the same hop, or no more "
-                                        "than NEAR (default " _TEXT(DEF_NEAR_FACTOR) ") "
-                                                                                     "times than some next hop, or MAX (default " _TEXT(DEF_WAIT_SECS) ") seconds "
-                                                                                                                                                       "(float point values allowed too)",
+                                        "than NEAR (default " _TEXT(
+                                            DEF_NEAR_FACTOR) ") "
+                                                             "times than some next hop, or MAX (default " _TEXT(
+                                                                 DEF_WAIT_SECS) ") seconds "
+                                                                                "(float point values allowed too)",
      set_wait_specs, 0, 0, 0},
     {"q", "queries", "nqueries",
      "Set the number of probes per each hop. "
@@ -622,7 +627,8 @@ static CLIF_option option_list[] = {
      "(instead of increasing the port per each probe), "
      "default port is " _TEXT(DEF_UDP_PORT),
      set_module, "udp", 0, CLIF_EXTRA},
-    {0, "UL", 0, "Use UDPLITE for tracerouting (default dest port is " _TEXT(DEF_UDP_PORT) ")", set_module, "udplite", 0, CLIF_ONEDASH | CLIF_EXTRA},
+    {0, "UL", 0, "Use UDPLITE for tracerouting (default dest port is " _TEXT(DEF_UDP_PORT) ")", set_module, "udplite",
+     0, CLIF_ONEDASH | CLIF_EXTRA},
     {"D", "dccp", 0,
      "Use DCCP Request for tracerouting (default "
      "port is " _TEXT(DEF_DCCP_PORT) ")",
@@ -643,13 +649,14 @@ static CLIF_option option_list[] = {
     CLIF_HELP_OPTION,
     CLIF_END_OPTION};
 
-static CLIF_argument arg_list[] = {{"host", "The host to traceroute to", set_host, 0, CLIF_STRICT},
-                                   {"packetlen",
-                                    "The full packet length (default is the length of "
-                                    "an IP header plus " _TEXT(DEF_DATA_LEN) "). Can be "
-                                                                             "ignored or increased to a minimal allowed value",
-                                    CLIF_arg_int, &packet_len, 0},
-                                   CLIF_END_ARGUMENT};
+static CLIF_argument arg_list[] = {
+    {"host", "The host to traceroute to", set_host, 0, CLIF_STRICT},
+    {"packetlen",
+     "The full packet length (default is the length of "
+     "an IP header plus " _TEXT(DEF_DATA_LEN) "). Can be "
+                                              "ignored or increased to a minimal allowed value",
+     CLIF_arg_int, &packet_len, 0},
+    CLIF_END_ARGUMENT};
 
 static void do_it(void);
 
@@ -717,8 +724,8 @@ int main(int argc, char* argv[]) {
             data_len = DEF_DATA_LEN - ops->header_len;
     }
     else {
-        if (packet_len >= header_len)
-            data_len = packet_len - header_len;
+        if (packet_len >= 0 && (size_t)packet_len >= header_len)
+            data_len = (size_t)packet_len - header_len;
     }
 
     num_probes = max_hops * probes_per_hop;
@@ -744,7 +751,8 @@ int main(int argc, char* argv[]) {
 
 static void print_header(void) {
     /*  Note, without ending new-line!  */
-    printf("traceroute to %s (%s), %u hops max, %zu byte packets", dst_name, addr2str(&dst_addr), max_hops, header_len + data_len);
+    printf("traceroute to %s (%s), %u hops max, %zu byte packets", dst_name, addr2str(&dst_addr), max_hops,
+           header_len + data_len);
     fflush(stdout);
 }
 
@@ -790,7 +798,9 @@ static void print_probe(probe* pb) {
             for (p = pb - 1; np && !p->res.sa.sa_family; p--, np--)
                 ;
 
-            if (!np || !equal_addr(&p->res, &pb->res) || (p->ext != pb->ext && !(p->ext && pb->ext && !strcmp(p->ext, pb->ext))) || (backward && p->recv_ttl != pb->recv_ttl))
+            if (!np || !equal_addr(&p->res, &pb->res) ||
+                (p->ext != pb->ext && !(p->ext && pb->ext && !strcmp(p->ext, pb->ext))) ||
+                (backward && p->recv_ttl != pb->recv_ttl))
                 prn = 1;
         }
 
@@ -802,7 +812,7 @@ static void print_probe(probe* pb) {
 
             if (backward && pb->recv_ttl) {
                 int hops = ttl2hops(pb->recv_ttl);
-                if (hops != ttl)
+                if (hops != (int)ttl)
                     printf(" '-%d'", hops);
             }
         }
@@ -833,7 +843,8 @@ static double get_timeout(probe* pb) {
 
     if (here_factor) {
         /*  check for already replied from the same hop   */
-        int i, idx = (pb - probes);
+        unsigned int i;
+        int idx = (pb - probes);
         probe* p = &probes[idx - (idx % probes_per_hop)];
 
         for (i = 0; i < probes_per_hop; i++, p++) {
@@ -990,7 +1001,7 @@ replace_by_final:
 }
 
 probe* probe_by_seq(int seq) {
-    int n;
+    unsigned int n;
 
     if (seq <= 0)
         return NULL;
@@ -1004,7 +1015,7 @@ probe* probe_by_seq(int seq) {
 }
 
 probe* probe_by_sk(int sk) {
-    int n;
+    unsigned int n;
 
     if (sk <= 0)
         return NULL;
@@ -1022,14 +1033,14 @@ static void poll_callback(int fd, int revents) {
 }
 
 static void do_it(void) {
-    int start = (first_hop - 1) * probes_per_hop;
-    int end = num_probes;
+    unsigned int start = (first_hop - 1) * probes_per_hop;
+    unsigned int end = num_probes;
     double last_send = 0;
 
     print_header();
 
     while (start < end) {
-        int n, num = 0;
+        unsigned int n, num = 0;
         double next_time = 0;
         double now_time = get_time();
 
@@ -1070,7 +1081,7 @@ static void do_it(void) {
                     break;
                 }
 
-                ttl = n / probes_per_hop + 1;
+                ttl = (int)(n / probes_per_hop + 1);
 
                 ops->send_probe(pb, ttl);
 
@@ -1138,7 +1149,8 @@ void tune_socket(int sk) {
 
     if (af == AF_INET) {
         i = dontfrag ? IP_PMTUDISC_PROBE : IP_PMTUDISC_DONT;
-        if (setsockopt(sk, SOL_IP, IP_MTU_DISCOVER, &i, sizeof(i)) < 0 && (!dontfrag || (i = IP_PMTUDISC_DO, setsockopt(sk, SOL_IP, IP_MTU_DISCOVER, &i, sizeof(i)) < 0)))
+        if (setsockopt(sk, SOL_IP, IP_MTU_DISCOVER, &i, sizeof(i)) < 0 &&
+            (!dontfrag || (i = IP_PMTUDISC_DO, setsockopt(sk, SOL_IP, IP_MTU_DISCOVER, &i, sizeof(i)) < 0)))
             error("setsockopt IP_MTU_DISCOVER");
 
         if (tos) {
@@ -1149,7 +1161,8 @@ void tune_socket(int sk) {
     }
     else if (af == AF_INET6) {
         i = dontfrag ? IPV6_PMTUDISC_PROBE : IPV6_PMTUDISC_DONT;
-        if (setsockopt(sk, SOL_IPV6, IPV6_MTU_DISCOVER, &i, sizeof(i)) < 0 && (!dontfrag || (i = IPV6_PMTUDISC_DO, setsockopt(sk, SOL_IPV6, IPV6_MTU_DISCOVER, &i, sizeof(i)) < 0)))
+        if (setsockopt(sk, SOL_IPV6, IPV6_MTU_DISCOVER, &i, sizeof(i)) < 0 &&
+            (!dontfrag || (i = IPV6_PMTUDISC_DO, setsockopt(sk, SOL_IPV6, IPV6_MTU_DISCOVER, &i, sizeof(i)) < 0)))
             error("setsockopt IPV6_MTU_DISCOVER");
 
         if (flow_label) {
@@ -1358,7 +1371,7 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
         struct iphdr* ip = (struct iphdr*)bufp;
         int hlen;
 
-        if (n < sizeof(struct iphdr))
+        if (n < (int)sizeof(struct iphdr))
             return;
 
         hlen = ip->ihl << 2;
@@ -1405,7 +1418,8 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
                     return;
 
                 /*  dgram icmp sockets might return extra things...  */
-                if (ee->ee_origin == SO_EE_ORIGIN_ICMP && (ee->ee_type == ICMP_SOURCE_QUENCH || ee->ee_type == ICMP_REDIRECT))
+                if (ee->ee_origin == SO_EE_ORIGIN_ICMP &&
+                    (ee->ee_type == ICMP_SOURCE_QUENCH || ee->ee_type == ICMP_REDIRECT))
                     return;
             }
         }
@@ -1455,12 +1469,13 @@ void recv_reply(int sk, int err, check_reply_t check_reply) {
 
     if (ee && extension && header_len + n >= (128 + 8) && /*  at least... (rfc4884)  */
         header_len <= 128 &&                              /*  paranoia   */
-        ((af == AF_INET && (ee->ee_type == ICMP_TIME_EXCEEDED || ee->ee_type == ICMP_DEST_UNREACH || ee->ee_type == ICMP_PARAMETERPROB)) ||
+        ((af == AF_INET && (ee->ee_type == ICMP_TIME_EXCEEDED || ee->ee_type == ICMP_DEST_UNREACH ||
+                            ee->ee_type == ICMP_PARAMETERPROB)) ||
          (af == AF_INET6 && (ee->ee_type == ICMP6_TIME_EXCEEDED || ee->ee_type == ICMP6_DST_UNREACH)))) {
         int step;
         int offs = 128 - header_len;
 
-        if (n > data_len)
+        if ((size_t)n > data_len)
             step = 0; /*  guaranteed at 128 ...  */
         else
             step = af == AF_INET ? 4 : 8;

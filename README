@@ -30,10 +30,14 @@ Olaf Kirch's traceroute, the original implementation of Van Jacobson
 
 This traceroute requires Linux kernel 2.6 and higher.
 
+Build with Meson:
+  meson setup build
+  meson compile -C build
+  sudo meson install -C build
+
 You can try to contact the author at <Dmitry at Butskoy dot name> .
 
 
 Good tracerouting!
 
 Dmitry Butskoy
-

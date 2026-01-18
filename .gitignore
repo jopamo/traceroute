@@ -1,0 +1,7 @@
+build/
+meson-private/
+meson-logs/
+meson-info/
+*.o
+*.a
+*.so

@@ -48,10 +48,12 @@ static int set_protocol(CLIF_option* optn, char* arg) {
     return 0;
 }
 
-static CLIF_option raw_options[] = {{0, "protocol", "PROT", "Use protocol %s (default is " _TEXT(DEF_RAW_PROT) ")", set_protocol, 0, 0, CLIF_ABBREV}, CLIF_END_OPTION};
+static CLIF_option raw_options[] = {
+    {0, "protocol", "PROT", "Use protocol %s (default is " _TEXT(DEF_RAW_PROT) ")", set_protocol, 0, 0, CLIF_ABBREV},
+    CLIF_END_OPTION};
 
 static int raw_init(const sockaddr_any* dest, unsigned int port_seq, size_t* packet_len_p) {
-    int i;
+    size_t i;
     int af = dest->sa.sa_family;
 
     dest_addr = *dest;
@@ -141,4 +143,4 @@ static tr_module raw_ops = {
     .one_per_time = 1,
 };
 
-TR_MODULE(raw_ops);
+TR_MODULE(raw_ops)
