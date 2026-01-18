@@ -92,9 +92,10 @@ static char version_string[] =
     "version " TRACEROUTE_VERSION
     "\nCopyright (c) 2016  Dmitry Butskoy, "
     "  License: GPL v2 or any later";
-static int debug = 0;
+int debug = 0;
 static int jsonl = 0;
 static int quiet = 0;
+static int bpf_mode = 0; /* 0=auto, 1=on, 2=off */
 static unsigned int first_hop = 1;
 unsigned int max_hops = DEF_HOPS;
 static unsigned int sim_probes = DEF_SIM_PROBES;
@@ -544,6 +545,18 @@ static int set_wait_specs(CLIF_option* optn, char* arg) {
     return 0;
 }
 
+static int set_bpf(CLIF_option* optn, char* arg) {
+    if (!arg || !strcasecmp(arg, "auto"))
+        bpf_mode = 0;
+    else if (!strcasecmp(arg, "on"))
+        bpf_mode = 1;
+    else if (!strcasecmp(arg, "off"))
+        bpf_mode = 2;
+    else
+        return -1;
+    return 0;
+}
+
 static int set_host(CLIF_argument* argm, char* arg, int index) {
     if (getaddr(arg, &dst_addr) < 0)
         return -1;
@@ -563,6 +576,7 @@ static CLIF_option option_list[] = {
     {"d", "debug", 0, "Enable socket level debugging", CLIF_set_flag, &debug, 0, 0},
     {0, "jsonl", 0, "Use JSONL streaming output", CLIF_set_flag, &jsonl, 0, 0},
     {0, "quiet", 0, "Do not print human-readable output", CLIF_set_flag, &quiet, 0, 0},
+    {0, "bpf", "mode", "Enable eBPF correlation (auto|on|off)", set_bpf, 0, 0, 0},
     {"F", "dont-fragment", 0, "Do not fragment packets", CLIF_set_flag, &dontfrag, 0, CLIF_ABBREV},
     {"f", "first", "first_ttl", "Start from the %s hop (instead from 1)", CLIF_set_uint, &first_hop, 0, 0},
     {"g", "gateway", "gate",
@@ -810,7 +824,25 @@ int main(int argc, char* argv[]) {
     if (ops->init(&dst_addr, dst_port_seq, &data_len) < 0)
         ex_error("trace method's init failed");
 
+    if (bpf_mode != 2) {
+        const char* bpf_objs[] = {"probe.bpf.o", "bpf/probe.bpf.o", "/usr/share/traceroute/probe.bpf.o", NULL};
+        int i;
+        for (i = 0; bpf_objs[i]; i++) {
+            if (access(bpf_objs[i], R_OK) == 0) {
+                if (bpf_init(bpf_objs[i]) == 0) {
+                    if (debug)
+                        fprintf(stderr, "BPF initialized using %s\n", bpf_objs[i]);
+                    break;
+                }
+            }
+        }
+        if (!bpf_objs[i] && bpf_mode == 1)
+            ex_error("BPF initialization failed");
+    }
+
     do_it();
+
+    bpf_cleanup();
 
     return 0;
 }
@@ -901,6 +933,7 @@ static void print_probe(probe* pb) {
 }
 
 static void print_end(void) {
+    bpf_print_histograms();
     printf("\n");
 }
 
@@ -1003,6 +1036,7 @@ probe* probe_by_sk(int sk) {
 }
 
 static void poll_callback(int fd, int revents) {
+    bpf_poll(fd, revents);
     ops->recv_probe(fd, revents);
 }
 

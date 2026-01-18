@@ -160,25 +160,25 @@
 
 ### P3.1 eBPF correlation + telemetry
 
-* BPF program(s) to observe sends + ICMP receives and correlate in-kernel
-* State maps:
+* [x] BPF program(s) to observe sends + ICMP receives and correlate in-kernel
+* [x] State maps:
 
-  * probe map (LRU hash)
-  * per-hop histograms
-* Emit hop events via BPF ring buffer ([Kernel.org][3])
+  * [x] probe map (LRU hash)
+  * [x] per-hop histograms
+* [x] Emit hop events via BPF ring buffer ([Kernel.org][3])
 * **Acceptance**
 
-  * Userspace does fewer syscalls per probe in BPF mode
-  * Ringbuf stream can drive the same JSONL renderer
+  * [x] Userspace does fewer syscalls per probe in BPF mode
+  * [x] Ringbuf stream can drive the same JSONL renderer
 
 ### P3.2 BPF deploy story (make it painless)
 
-* `--bpf auto|off|on`
-* Capability detection and friendly failures
-* BPF object shipped as part of build; optionally “CO-RE” style
+* [x] `--bpf auto|off|on`
+* [x] Capability detection and friendly failures
+* [x] BPF object shipped as part of build; optionally “CO-RE” style
 * **Acceptance**
 
-  * BPF mode fails gracefully (no crash, clear message)
+  * [x] BPF mode fails gracefully (no crash, clear message)
 
 ---
 

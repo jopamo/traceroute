@@ -56,6 +56,8 @@ typedef struct tr_module_struct tr_module;
 #define DEF_DCCP_PORT DEF_START_PORT /*  is it a good choice?...  */
 #define DEF_RAW_PROT 253             /*  for experimentation and testing, rfc3692  */
 
+extern int debug;
+
 void error(const char* str) __attribute__((noreturn));
 void error_or_perm(const char* str) __attribute__((noreturn));
 void put_err(probe* pb, const char* format, ...) __attribute__((format(printf, 2, 3)));
@@ -106,6 +108,11 @@ void tr_export_jsonl_header(const char* dst_name,
                             size_t packet_len);
 void tr_export_jsonl_probe(probe* pb);
 void tr_export_jsonl_end(void);
+
+int bpf_init(const char* obj_path);
+void bpf_poll(int fd, int revents);
+void bpf_print_histograms(void);
+void bpf_cleanup(void);
 
 #define TR_MODULE(MOD)                                           \
     static void __init_##MOD(void) __attribute__((constructor)); \

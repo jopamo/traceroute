@@ -3,6 +3,7 @@ m_dep = cc.find_library('m', required: true)
 
 traceroute_src = files(
   'as_lookups.c',
+  'bpf.c',
   'csum.c',
   'export.c',
   'extension.c',
@@ -25,6 +26,7 @@ executable(
   include_directories: inc_dirs,
   dependencies: [
     libsupp_dep,
+    libbpf_dep,
     m_dep,
   ],
   install: true,
