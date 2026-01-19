@@ -6,6 +6,20 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#if defined(__GLIBC__)
+#define UDPHDR_SPORT(UH) ((UH)->source)
+#define UDPHDR_DPORT(UH) ((UH)->dest)
+#define TCPHDR_SPORT(TH) ((TH)->source)
+#define TCPHDR_DPORT(TH) ((TH)->dest)
+#define TCPHDR_SEQ(TH) ((TH)->seq)
+#else
+#define UDPHDR_SPORT(UH) ((UH)->uh_sport)
+#define UDPHDR_DPORT(UH) ((UH)->uh_dport)
+#define TCPHDR_SPORT(TH) ((TH)->th_sport)
+#define TCPHDR_DPORT(TH) ((TH)->th_dport)
+#define TCPHDR_SEQ(TH) ((TH)->th_seq)
+#endif
+
 int correlate_extract_id(const void* buf, size_t len, ProbeIdentity* id) {
     if (!buf || len < sizeof(struct iphdr) || !id)
         return 0;
@@ -44,15 +58,15 @@ int correlate_extract_id(const void* buf, size_t len, ProbeIdentity* id) {
 
     if (proto == IPPROTO_UDP && remaining >= sizeof(struct udphdr)) {
         const struct udphdr* udp = (const struct udphdr*)transport_header;
-        id->src_port = ntohs(udp->source);
-        id->dst_port = ntohs(udp->dest);
+        id->src_port = ntohs(UDPHDR_SPORT(udp));
+        id->dst_port = ntohs(UDPHDR_DPORT(udp));
         return 1;
     }
     else if (proto == IPPROTO_TCP && remaining >= sizeof(struct tcphdr)) {
         const struct tcphdr* tcp = (const struct tcphdr*)transport_header;
-        id->src_port = ntohs(tcp->source);
-        id->dst_port = ntohs(tcp->dest);
-        id->sequence = ntohl(tcp->seq);
+        id->src_port = ntohs(TCPHDR_SPORT(tcp));
+        id->dst_port = ntohs(TCPHDR_DPORT(tcp));
+        id->sequence = ntohl(TCPHDR_SEQ(tcp));
         return 1;
     }
 
