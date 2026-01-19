@@ -44,6 +44,26 @@ static uint8_t buf[1024]; /*  enough, enough...  */
 static size_t csum_len = 0;
 static struct tcphdr* th = NULL;
 
+#if defined(__GLIBC__)
+#define TCPHDR_SPORT(TH) ((TH)->source)
+#define TCPHDR_DPORT(TH) ((TH)->dest)
+#define TCPHDR_SEQ(TH) ((TH)->seq)
+#define TCPHDR_ACK(TH) ((TH)->ack_seq)
+#define TCPHDR_DOFF(TH) ((TH)->doff)
+#define TCPHDR_WIN(TH) ((TH)->window)
+#define TCPHDR_SUM(TH) ((TH)->check)
+#define TCPHDR_URG(TH) ((TH)->urg_ptr)
+#else
+#define TCPHDR_SPORT(TH) ((TH)->th_sport)
+#define TCPHDR_DPORT(TH) ((TH)->th_dport)
+#define TCPHDR_SEQ(TH) ((TH)->th_seq)
+#define TCPHDR_ACK(TH) ((TH)->th_ack)
+#define TCPHDR_DOFF(TH) ((TH)->th_off)
+#define TCPHDR_WIN(TH) ((TH)->th_win)
+#define TCPHDR_SUM(TH) ((TH)->th_sum)
+#define TCPHDR_URG(TH) ((TH)->th_urp)
+#endif
+
 #define TH_FLAGS(TH) (((uint8_t*)(TH))[13])
 #define TH_FIN 0x01
 #define TH_SYN 0x02
@@ -85,7 +105,7 @@ static char* print_tcp_info(struct tcphdr* tcp, size_t len) {
     unsigned int flags;
     uint8_t* ptr;
 
-    if (len < sizeof(struct tcphdr) || len != (size_t)(tcp->doff << 2))
+    if (len < sizeof(struct tcphdr) || len != (size_t)(TCPHDR_DOFF(tcp) << 2))
         return NULL;
 
     flags = TH_FLAGS(tcp);
@@ -378,15 +398,15 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
 
     th = (struct tcphdr*)ptr;
 
-    th->source = 0; /*  temporary   */
-    th->dest = dest_port;
-    th->seq = 0; /*  temporary   */
-    th->ack_seq = 0;
-    th->doff = 0; /*  later...  */
+    TCPHDR_SPORT(th) = 0; /*  temporary   */
+    TCPHDR_DPORT(th) = dest_port;
+    TCPHDR_SEQ(th) = 0; /*  temporary   */
+    TCPHDR_ACK(th) = 0;
+    TCPHDR_DOFF(th) = 0; /*  later...  */
     TH_FLAGS(th) = flags & 0xff;
-    th->window = htons(4 * mtu);
-    th->check = 0;
-    th->urg_ptr = 0;
+    TCPHDR_WIN(th) = htons(4 * mtu);
+    TCPHDR_SUM(th) = 0;
+    TCPHDR_URG(th) = 0;
 
     /*  Build TCP options   */
 
@@ -456,7 +476,7 @@ static int tcp_init(const sockaddr_any* dest, unsigned int port_seq, size_t* pac
         error("impossible"); /*  as >>2 ...  */
 
     *lenp = htons(len);
-    th->doff = len >> 2;
+    TCPHDR_DOFF(th) = len >> 2;
 
     *packet_len_p = len;
 
@@ -496,12 +516,12 @@ static void tcp_send_probe(probe* pb, int ttl) {
       send RST in such a situation automatically (we have to do nothing).
     */
 
-    th->source = addr.sin.sin_port;
+    TCPHDR_SPORT(th) = addr.sin.sin_port;
 
-    th->seq = random_seq();
+    TCPHDR_SEQ(th) = random_seq();
 
-    th->check = 0;
-    th->check = in_csum(buf, csum_len);
+    TCPHDR_SUM(th) = 0;
+    TCPHDR_SUM(th) = in_csum(buf, csum_len);
 
     if (ttl != last_ttl) {
         set_ttl(raw_sk, ttl);
@@ -511,13 +531,13 @@ static void tcp_send_probe(probe* pb, int ttl) {
 
     pb->send_time = get_time();
 
-    if (do_send(raw_sk, th, th->doff << 2, &dest_addr) < 0) {
+    if (do_send(raw_sk, th, TCPHDR_DOFF(th) << 2, &dest_addr) < 0) {
         close(sk);
         pb->send_time = 0;
         return;
     }
 
-    pb->seq = th->source;
+    pb->seq = TCPHDR_SPORT(th);
 
     pb->sk = sk;
 
@@ -533,12 +553,12 @@ static probe* tcp_check_reply(int sk, int err, sockaddr_any* from, char* buf, si
         return NULL; /*  too short   */
 
     if (err) {
-        sport = tcp->source;
-        dport = tcp->dest;
+        sport = TCPHDR_SPORT(tcp);
+        dport = TCPHDR_DPORT(tcp);
     }
     else {
-        sport = tcp->dest;
-        dport = tcp->source;
+        sport = TCPHDR_DPORT(tcp);
+        dport = TCPHDR_SPORT(tcp);
     }
 
     if (dport != dest_port)
