@@ -20,6 +20,14 @@
 
 #include "traceroute.h"
 
+#if defined(__GLIBC__)
+#define TCPHDR_SPORT(TH) ((TH)->source)
+#define TCPHDR_DPORT(TH) ((TH)->dest)
+#else
+#define TCPHDR_SPORT(TH) ((TH)->th_sport)
+#define TCPHDR_DPORT(TH) ((TH)->th_dport)
+#endif
+
 static sockaddr_any dest_addr = {
     {
         0,
@@ -143,10 +151,10 @@ static probe* tcp_check_reply(int sk, int err, sockaddr_any* from, char* buf, si
         tcp = (struct tcphdr*)(ip6 + 1);
     }
 
-    if (tcp->dest != dest_addr.sin.sin_port)
+    if (TCPHDR_DPORT(tcp) != dest_addr.sin.sin_port)
         return NULL;
 
-    pb = probe_by_seq(tcp->source);
+    pb = probe_by_seq(TCPHDR_SPORT(tcp));
     if (!pb)
         return NULL;
 
