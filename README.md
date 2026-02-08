@@ -9,7 +9,6 @@ intermediate gateways.
 ## Table of Contents
 
 - [Build](#build)
-- [Testing](#testing)
 - [Usage Examples](#usage-examples)
 - [Features](#features)
 - [Advanced Modern Capabilities](#advanced-modern-capabilities)
@@ -29,15 +28,6 @@ Requirements:
 ```sh
 meson setup build
 meson compile -C build
-```
-
-## Testing
-
-This project maintains a rigorous unit test suite enforcing core logic correctness, particularly for packet parsing, correlation state machines, and protocol decoding.
-
-```sh
-# Run the unit test suite
-meson test -C build unit_tests
 ```
 
 ## Usage Examples
@@ -98,5 +88,5 @@ This fork introduces significant architectural improvements and new features:
 
 ## Credits
 
-Written from scratch, influenced by Olaf Kirch's traceroute, Van Jacobson’s
+Forked from Dmitry at Butskoy, influenced by Olaf Kirch's traceroute, Van Jacobson’s
 original implementation, and current BSD variants.
